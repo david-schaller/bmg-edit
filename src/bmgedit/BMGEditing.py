@@ -23,6 +23,7 @@ __author__ = 'David Schaller'
 
 class BMGEditor:
     
+    
     def __init__(self, G):
         
         self.G = G
