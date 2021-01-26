@@ -415,7 +415,7 @@ if __name__ == '__main__':
     # while True:
     #     i += 1
     
-    random_tree = PhyloTree.random_colored_tree(15, 4,
+    random_tree = PhyloTree.random_colored_tree(12, 4,
                                                 # binary=True,
                                                 force_all_colors=True,)
     bmg = bm.bmg_from_tree(random_tree)
