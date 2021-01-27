@@ -20,9 +20,8 @@ from bmgedit.Build import Build2
 __author__ = 'David Schaller'
 
 
-
 class BMGEditor:
-    
+    """Wrapper for triple-based BMG editing heuristics."""
     
     def __init__(self, G):
         

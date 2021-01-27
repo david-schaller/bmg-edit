@@ -3,7 +3,7 @@
 import networkx as nx
 
 from asymmetree.datastructures.PhyloTree import PhyloTree, PhyloTreeNode
-from asymmetree.datastructures.Partition import Partition
+from asymmetree.tools.Build import aho_graph, mtt_partition
 
 from bmgedit.partitioning.Karger import Karger
 from bmgedit.partitioning.GreedyBipartition import (greedy_bipartition,
@@ -12,77 +12,6 @@ from bmgedit.partitioning.GreedyBipartition import (greedy_bipartition,
 
 __author__ = 'David Schaller'
 
-
-def aho_graph(R, L, weighted=False, triple_weights=None):
-    """Construct the auxiliary graph (Aho graph) for BUILD.
-        
-    Edges {a,b} are optionally weighted by the number of occurrences, resp.,
-    sum of weights of triples of the form ab|x or ba|x.
-    """
-    
-    G = nx.Graph()
-    G.add_nodes_from(L)
-
-    for a, b, c in R:
-        if not G.has_edge(a, b):
-            G.add_edge(a, b, weight=0)
-        
-        if weighted:
-            if triple_weights:
-                G[a][b]['weight'] += triple_weights[a, b, c]
-            else:
-                G[a][b]['weight'] += 1
-    
-    return G
-
-
-def _triple_connect(G, t):
-    
-    G.add_edge(t[0], t[1])
-    G.add_edge(t[0], t[2])
-    
-
-def mtt_partition(L, R, F):
-    
-    # auxiliary graph initialized as Aho graph
-    G = aho_graph(R, L, weighted=False)
-    
-    # auxiliary partition
-    P = Partition(nx.connected_components(G))
-    
-    if len(P) == 1:
-        return P, G
-    
-    # aux. set of forbidden triples
-    S = {t for t in F if P.separated_xy_z(*t)}
-    
-    # lookup of forb. triples to which u belongs
-    L = {u: [] for u in L}
-    for t in F:
-        for u in t:
-            L[u].append(t)
-    
-    while S:
-        t = S.pop()
-        _triple_connect(G, t)
-        
-        # merge returns the smaller of the two merged sets
-        smaller_set = P.merge(t[0], t[2])
-        
-        # update S by traversing the L(u)
-        for u in smaller_set:
-            for t in L[u]:
-                if t in S and not P.separated_xy_z(*t):
-                    S.remove(t)
-                    _triple_connect(G, t)
-                elif t not in S and P.separated_xy_z(*t):
-                    S.add(t)
-    
-    return P, G
-
-
-
-        
 
 class Build2:
     """BUILD / MTT algorithm with minimal cost bipartition."""
