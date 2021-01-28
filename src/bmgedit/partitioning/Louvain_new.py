@@ -8,10 +8,21 @@ import random, math
 import networkx as nx
 
 from asymmetree.datastructures.LinkedList import LinkedList
-from asymmetree.datastructures.AVLTree import TreeSet
 
 
 __author__ = 'David Schaller'
+
+
+class Louvain:
+    
+    def __init__(self, graph):
+        
+        if not isinstance(graph, nx.Graph) or graph.is_directed():
+            raise TypeError("input graph must be an undirected NetworkX graph")
+        
+        # self.graph = graph
+        
+        levels = []
 
 
 class Supernode:
@@ -31,30 +42,38 @@ class Supernode:
 
 class Community:
     
-    def __init__(self, nodes):
+    def __init__(self, initial_node):
         
-        self.nodes = {item for item in nodes}
+        self.nodes = {initial_node}
         
         # sum of the weights of the links inside the community
         self._in = 0
         
         # sum of the weights of the links incident to nodes in the community
         self._tot = 0
-    
-    
-    def __contains__(self, node):
         
-        return node in self.nodes
-    
-    
-    def add(self, node):
         
-        self.nodes.add()
-    
-    
-    def remove(self, node):
+    def __len__(self):
         
-        self.nodes.remove(node)
+        return len(self.nodes)
+    
+    # def __contains__(self, node):
+    #
+    #     return node in self.nodes
+    
+    
+    def insert(self, x, x_degree, x_loop, k_x_in):
+        
+        self.nodes.add(x)
+        self._in += 2 * k_x_in + x_loop
+        self._tot += x_degree
+    
+    
+    def remove(self, x, x_degree, x_loop, k_x_in):
+        
+        self.nodes.remove(x)
+        self._in -= 2 * k_x_in + x_loop
+        self._tot -= x_degree
         
         
 class Level:
@@ -66,6 +85,8 @@ class Level:
         self.node_to_com = {}
         self.nodes = [x for x in graph.nodes()]
         
+        self.moved_on_level = False
+        
         # sum of the weights of all edges incident to nodes
         self.k = {x: 0 for x in self.nodes}
         
@@ -76,7 +97,7 @@ class Level:
         self.m = 0
         
         for x in self.nodes:
-            com = Community([nx])
+            com = Community(x)
             self.communities.add(com)
             self.node_to_com[x] = com
         
@@ -90,107 +111,79 @@ class Level:
                 self.node_to_com[x]._in += 2 * weight
                 self.loops[x]+= 2 * weight
             self.m += weight
-        
-
-
-class Louvain:
-    
-    def __init__(self, graph):
-        
-        if not isinstance(graph, nx.Graph) or graph.is_directed():
-            raise TypeError("input graph must be an undirected NetworkX graph")
-        
-        # self.graph = graph
-        
-        levels = []
-        
-    
-def compute_level(graph):
-    
-    communities = set()
-    node_to_com = {}
-    nodes = [x for x in graph.nodes()]
-    
-    # sum of the weights of all edges incident to nodes
-    k = {}
-    
-    # sum of all edge weight
-    m = 0
-    
-    for x in nodes:
-        com = Community([nx])
-        communities.add(com)
-        node_to_com[x] = com
-        k[x] = 0
-    
-    for x, y, data in graph.edges(data=True):
-        weight = data.get('weight', 1.0)
-        k[x] += weight
-        k[y] += weight
-        node_to_com[x].Sigma_tot += weight
-        node_to_com[y].Sigma_tot += weight
-        if node_to_com[x] is node_to_com[y]:
-            node_to_com[x] += 2 * weight
-    
-    random.shuffle(nodes)
-    
-    while True:
-        moved_node = False
-        
-        for x in nodes:
             
-            neighbor_com_weights = _neighbor_communities(x, node_to_com, graph)
+    
+    def _cluster(self):
+        
+        random.shuffle(self.nodes)
+    
+        while True:
+            moved_node = False
             
-            for y in graph.neighbors(x):
-                if node_to_com[x] is node_to_com[y]:
-                    continue
+            for x in self.nodes:
                 
-                C_x = node_to_com[x]
-                C_y = node_to_com[y]
-        
-        if not moved_node:
-            break
-    
-    
-def _move_into_C_gain(x, C, graph, m, k):
-    
-    # the sum of the weights of the links from i to nodes in C
-    k_x_in = 0
-    for y in graph.neighbors(x):
-        if y in C:
-            weight = graph.get_edge_data(x, y).get('weight', 1.0)
-            k_x_in += weight
-    
-    delta_Q = ((C._in + 2 * k_x_in) / (2 * m) - \
-               ((C._tot + k[x]) / (2 * m)) ** 2) - \
-              (C._in / (2 * m) - \
-               (C._tot / (2 * m)) ** 2 - \
-               (k[x] / (2 * m)) ** 2 )
-    
-    return k_x_in, delta_Q
+                C_x = self.node_to_com[x]
+                
+                # remove x from its community
+                C_x.remove(x)
+                
+                # maps community C to the sum of weights of the links of x to
+                # elements in C \ {x}
+                k_x_in = self._weight_sums_to_communities(x)
+                
+                # C_x is preferred in case of ties, i.e. stays in its original
+                # community
+                best_gain = self._modularity_gain(x, C_x, k_x_in[C_x])
+                best_C = C_x
+                visited = {C_x}
+                
+                for y in self.graph.neighbors(x):
+                    
+                    C_y = self.node_to_com[y]
+                    if C_y in visited:
+                        continue
+                    
+                    new_gain = self._modularity_gain(x, C_y, k_x_in[C_y])
+                    if new_gain > best_gain:
+                        best_gain = new_gain
+                        best_C = C_y
+                        moved_node = True
+                        self.moved_on_level = True
+                
+                best_C.insert(x)
+                self.node_to_com[x] = best_C
+                
+                # remove the original community if it is now empty
+                if len(C_x) == 0:
+                    self.communities.remove(C_x)
             
-
-def _neighbor_communities(x, node_to_com, graph):
+            # exit the loop when all nodes stayed in their community
+            if not moved_node:
+                break
     
-    # sum of the weight from x to every community C ( \{x} )
-    neighbor_com_weights = {}
     
-    for y in graph.neighbors(x):
-        if x == y:
-            continue
-        C = node_to_com[y]
-        weight = graph.get_edge_data(x, y).get('weight', 1.0)
-        neighbor_com_weights[C] = neighbor_com_weights.get(C, 0.0) + weight
+    def _weight_sums_to_communities(self, x):
+    
+        # sum of the weight from x to every community C ( \{x} )
+        weight_sums = {}
         
-
-def initial_communities(self):
-    
-    communities = set()
-    
-    for x in self.graph.nodes:
+        for y in self.graph.neighbors(x):
+            if x == y:
+                continue
+            C = self.node_to_com[y]
+            weight = self.graph.get_edge_data(x, y).get('weight', 1.0)
+            weight_sums[C] = weight_sums.get(C, 0.0) + weight
         
-        community = Community([x])
+        return weight_sums
+    
+    
+    def _modularity_gain(self, x, C, k_x_in):
         
-    pass
-    
-    
+        delta_Q = ((C._in + 2 * k_x_in) / (2 * self.m) - \
+                   ((C._tot + self.k[x]) / (2 * self.m)) ** 2) - \
+                  (C._in / (2 * self.m) - \
+                   (C._tot / (2 * self.m)) ** 2 - \
+                   (self.k[x] / (2 * self.m)) ** 2 )
+        
+        return delta_Q
+        
