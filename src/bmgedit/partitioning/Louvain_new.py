@@ -8,8 +8,6 @@ import random, itertools
 import networkx as nx
 from networkx.algorithms.community import modularity
 
-# from asymmetree.datastructures.LinkedList import LinkedList
-
 
 __author__ = 'David Schaller'
 
@@ -39,7 +37,6 @@ class Louvain:
             
             graph = self.level_graphs[-1]
             level = Level(graph, weight=self.weight)
-            level.cluster()
             
             part = list(level.communities.values())
             print([[x.nodes for x in com] for com in part])
@@ -96,7 +93,6 @@ class Louvain:
                 nl_graph[u][v][self.weight] = w
         
         return nl_graph
-        
 
 
 class Supernode:
@@ -126,50 +122,6 @@ class Supernode:
     def extend(self, nodes):
         
         self.nodes.extend(nodes)
-
-
-# class Community:
-    
-#     def __init__(self, initial_node):
-        
-#         self.nodes = {initial_node}
-        
-#         # sum of the weights of the links inside the community
-#         self._in = 0
-        
-#         # sum of the weights of the links incident to nodes in the community
-#         self._tot = 0
-        
-        
-#     def __len__(self):
-        
-#         return len(self.nodes)
-    
-    
-#     def __iter__(self):
-        
-#         return iter(self.nodes)
-    
-    
-#     def __next__(self):
-        
-#         pass
-    
-#     # def __contains__(self, node):
-#     #
-#     #     return node in self.nodes
-    
-    
-#     def insert(self, x, x_degree):
-        
-#         self.nodes.add(x)
-#         self._tot += x_degree
-    
-    
-#     def remove(self, x, x_degree):
-        
-#         self.nodes.remove(x)
-#         self._tot -= x_degree
         
         
 class Level:
@@ -179,7 +131,13 @@ class Level:
         self.graph = graph
         self.weight = weight  
         
-        self.nodes = [x for x in graph.nodes()]
+        self._initialize()
+        self._cluster()
+    
+    
+    def _initialize(self):
+        
+        self.nodes = [x for x in self.graph.nodes()]
         self.node_to_com = {x: i for i, x in enumerate(self.nodes)}
         self.communities = {i: {x} for x, i in self.node_to_com.items()}
         
@@ -195,12 +153,7 @@ class Level:
         self.moved_on_level = False
         self.total_modularity_gain = 0.0
         
-        # for x in self.nodes:
-        #     com = Community(x)
-        #     self.communities.append(com)
-        #     self.node_to_com[x] = com
-        
-        for x, y, data in graph.edges(data=True):
+        for x, y, data in self.graph.edges(data=True):
             weight = data.get(self.weight, 1.0)
             self.k[x] += weight
             self.k[y] += weight
@@ -208,10 +161,10 @@ class Level:
             self.com_tot[self.node_to_com[y]] += weight
             
     
-    def cluster(self):
+    def _cluster(self):
         
         # for an edgeless graph, every node is in its own cluster
-        if self.graph.size() == 0:
+        if self.m == 0:
             return
         
         random.shuffle(self.nodes)
@@ -233,7 +186,11 @@ class Level:
                 
                 # C_x is preferred in case of ties, i.e. stays in its original
                 # community
-                cost_removal = self._modularity_gain(x, C_x, k_x_in[C_x])
+                
+                # equation in Blondel et al. can be simplified to this
+                cost_removal = (k_x_in[C_x] - 
+                                self.com_tot[C_x] * self.k[x] / (2 * self.m)) \
+                               / self.m
                 best_gain = cost_removal
                 best_C = C_x
                 visited = {C_x}
@@ -244,7 +201,10 @@ class Level:
                     if C_y in visited:
                         continue
                     
-                    new_gain = self._modularity_gain(x, C_y, k_x_in[C_y])
+                    new_gain = (k_x_in[C_y] - 
+                                self.com_tot[C_y] * self.k[x] / (2 * self.m)) \
+                               / self.m
+                    
                     if new_gain > best_gain:
                         best_gain = new_gain
                         best_C = C_y
@@ -263,6 +223,21 @@ class Level:
             # exit the loop when all nodes stayed in their community
             if not moved_node:
                 break
+            
+    
+    def get_partition(self):
+        """Convert the communities of supernodes into a partition of the 
+        orginal nodes."""
+        
+        partition = []
+        
+        for com in self.communities.values():
+            part_set = set()
+            for supernode in com:
+                part_set.update(supernode.nodes)
+            partition.append(part_set)
+            
+        return partition
     
     
     def _weight_sums_to_communities(self, x):
@@ -279,20 +254,6 @@ class Level:
             weight_sums[C] = weight_sums.get(C, 0.0) + weight
         
         return weight_sums
-    
-    
-    def _modularity_gain(self, x, C, k_x_in):
-        
-        # delta_Q = ((C._in + 2 * k_x_in) / (2 * self.m) - \
-        #            ((C._tot + self.k[x]) / (2 * self.m)) ** 2) - \
-        #           (C._in / (2 * self.m) - \
-        #            (C._tot / (2 * self.m)) ** 2 - \
-        #            (self.k[x] / (2 * self.m)) ** 2 )
-        
-        # equation in Blondel et al. can be simplified to this
-        delta_Q = (k_x_in - self.com_tot[C] * self.k[x] / (2 * self.m)) / self.m
-        
-        return delta_Q
 
 
 if __name__ == '__main__':
