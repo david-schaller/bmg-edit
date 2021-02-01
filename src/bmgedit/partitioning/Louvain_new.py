@@ -6,6 +6,7 @@ Implementation of the Louvain method for community detection.
 
 import random, itertools
 import networkx as nx
+from networkx.algorithms.community import modularity
 
 # from asymmetree.datastructures.LinkedList import LinkedList
 
@@ -40,7 +41,7 @@ class Louvain:
             level = Level(graph, weight=self.weight)
             level.cluster()
             
-            part = level.communities
+            part = list(level.communities.values())
             print([[x.nodes for x in com] for com in part])
             mod = modularity(graph, part, weight=self.weight)
             print('+', level.total_modularity_gain,
@@ -93,16 +94,14 @@ class Louvain:
             else:
                 nl_graph.add_edge(u, v)
                 nl_graph[u][v][self.weight] = w
-            
-            # (new) loops count twice 
-            if (u == v) and x != y:
-                nl_graph[u][v][self.weight] += w
         
         return nl_graph
         
 
 
 class Supernode:
+    
+    __slots__ = ('nodes',)
     
     def __init__(self):
         
@@ -127,56 +126,50 @@ class Supernode:
     def extend(self, nodes):
         
         self.nodes.extend(nodes)
-        
-    # def remove(self, node):
-        
-    #     self.nodes.remove(node)
 
 
-class Community:
+# class Community:
     
-    def __init__(self, initial_node):
+#     def __init__(self, initial_node):
         
-        self.nodes = {initial_node}
+#         self.nodes = {initial_node}
         
-        # sum of the weights of the links inside the community
-        self._in = 0
+#         # sum of the weights of the links inside the community
+#         self._in = 0
         
-        # sum of the weights of the links incident to nodes in the community
-        self._tot = 0
+#         # sum of the weights of the links incident to nodes in the community
+#         self._tot = 0
         
         
-    def __len__(self):
+#     def __len__(self):
         
-        return len(self.nodes)
-    
-    
-    def __iter__(self):
-        
-        return iter(self.nodes)
+#         return len(self.nodes)
     
     
-    def __next__(self):
+#     def __iter__(self):
         
-        pass
-    
-    # def __contains__(self, node):
-    #
-    #     return node in self.nodes
+#         return iter(self.nodes)
     
     
-    def insert(self, x, x_degree, x_loop, k_x_in):
+#     def __next__(self):
         
-        self.nodes.add(x)
-        self._in += 2 * k_x_in + x_loop
-        self._tot += x_degree
+#         pass
+    
+#     # def __contains__(self, node):
+#     #
+#     #     return node in self.nodes
     
     
-    def remove(self, x, x_degree, x_loop, k_x_in):
+#     def insert(self, x, x_degree):
         
-        self.nodes.remove(x)
-        self._in -= 2 * k_x_in + x_loop
-        self._tot -= x_degree
+#         self.nodes.add(x)
+#         self._tot += x_degree
+    
+    
+#     def remove(self, x, x_degree):
+        
+#         self.nodes.remove(x)
+#         self._tot -= x_degree
         
         
 class Level:
@@ -184,39 +177,35 @@ class Level:
     def __init__(self, graph, weight='weight'):
         
         self.graph = graph
-        self.weight = weight        
+        self.weight = weight  
         
-        self.communities = set()
-        self.node_to_com = {}
         self.nodes = [x for x in graph.nodes()]
+        self.node_to_com = {x: i for i, x in enumerate(self.nodes)}
+        self.communities = {i: {x} for x, i in self.node_to_com.items()}
         
-        self.moved_on_level = False
-        self.total_modularity_gain = 0.0
+        # sum of the weights of the links incident to nodes in the community
+        self.com_tot = {i: 0 for i in self.communities.keys()}
         
         # sum of the weights of all edges incident to nodes
         self.k = {x: 0 for x in self.nodes}
         
-        # sum of of all loop weights (times 2) for all nodes
-        self.loops = {x: 0 for x in self.nodes}
-        
         # sum of all edge weight
-        self.m = 0
+        self.m = self.graph.size(weight=self.weight)
         
-        for x in self.nodes:
-            com = Community(x)
-            self.communities.add(com)
-            self.node_to_com[x] = com
+        self.moved_on_level = False
+        self.total_modularity_gain = 0.0
+        
+        # for x in self.nodes:
+        #     com = Community(x)
+        #     self.communities.append(com)
+        #     self.node_to_com[x] = com
         
         for x, y, data in graph.edges(data=True):
             weight = data.get(self.weight, 1.0)
             self.k[x] += weight
             self.k[y] += weight
-            self.node_to_com[x]._tot += weight
-            self.node_to_com[y]._tot += weight
-            if self.node_to_com[x] is self.node_to_com[y]:
-                self.node_to_com[x]._in += 2 * weight
-                self.loops[x] += 2 * weight
-            self.m += weight
+            self.com_tot[self.node_to_com[x]] += weight
+            self.com_tot[self.node_to_com[y]] += weight
             
     
     def cluster(self):
@@ -239,7 +228,8 @@ class Level:
                 k_x_in = self._weight_sums_to_communities(x)
                 
                 # remove x from its community
-                C_x.remove(x, self.k[x], self.loops[x], k_x_in[C_x])
+                self.communities[C_x].remove(x)
+                self.com_tot[C_x] -= self.k[x]
                 
                 # C_x is preferred in case of ties, i.e. stays in its original
                 # community
@@ -261,13 +251,14 @@ class Level:
                         moved_node = True
                         self.moved_on_level = True
                 
-                best_C.insert(x, self.k[x], self.loops[x], k_x_in[best_C])
+                self.communities[best_C].add(x)
+                self.com_tot[best_C] += self.k[x]
                 self.node_to_com[x] = best_C
                 self.total_modularity_gain += best_gain - cost_removal
                 
                 # remove the original community if it is now empty
-                if len(C_x) == 0:
-                    self.communities.remove(C_x)
+                if len(self.communities[C_x]) == 0:
+                    del self.communities[C_x]
             
             # exit the loop when all nodes stayed in their community
             if not moved_node:
@@ -292,47 +283,16 @@ class Level:
     
     def _modularity_gain(self, x, C, k_x_in):
         
-        delta_Q = ((C._in + 2 * k_x_in) / (2 * self.m) - \
-                   ((C._tot + self.k[x]) / (2 * self.m)) ** 2) - \
-                  (C._in / (2 * self.m) - \
-                   (C._tot / (2 * self.m)) ** 2 - \
-                   (self.k[x] / (2 * self.m)) ** 2 )
+        # delta_Q = ((C._in + 2 * k_x_in) / (2 * self.m) - \
+        #            ((C._tot + self.k[x]) / (2 * self.m)) ** 2) - \
+        #           (C._in / (2 * self.m) - \
+        #            (C._tot / (2 * self.m)) ** 2 - \
+        #            (self.k[x] / (2 * self.m)) ** 2 )
+        
+        # equation in Blondel et al. can be simplified to this
+        delta_Q = (k_x_in - self.com_tot[C] * self.k[x] / (2 * self.m)) / self.m
         
         return delta_Q
-
-
-def modularity(G, partition, weight='weight'):
-    
-    k = {x: 0.0 for x in G.nodes()}
-    m = G.size(weight=weight)
-    
-    for x, y, data in G.edges(data=True):
-        w = data.get(weight, 1.0)
-        k[x] += w
-        k[y] += w
-        # if x == y:
-        #     k[x] -= w
-    
-    nodes = [x for x in G.nodes()]
-    
-    if isinstance(partition, dict):
-        node_to_part = partition
-    else:
-        node_to_part = {}
-        for i, part_set in enumerate(partition):
-            for x in part_set:
-                node_to_part[x] = i
-    
-    total_sum = 0.0
-    for x, y in itertools.product(nodes, nodes):
-        if node_to_part[x] == node_to_part[y]:
-            if G.has_edge(x, y):
-                A_xy = G.get_edge_data(x, y).get(weight, 1.0)
-            else:
-                A_xy = 0.0
-            total_sum += A_xy - k[x] * k[y] / (2 * m)
-    
-    return total_sum / (2 * m)
 
 
 if __name__ == '__main__':
@@ -351,7 +311,39 @@ if __name__ == '__main__':
     # part = [[1,2,3], [4,5,6,10], [7,8,9]]
     
     
-    print(modularity(G, part))
+    print(modularity(G, part, weight='weight'))
     
     louv = Louvain(G)
     louv.run()
+    
+    G2 = nx.Graph()
+    G2.add_nodes_from([x for x in range(16)])
+    G2.add_edges_from([(0,2), (0,3), (0,4), (0,5),
+                       (1,2), (1,4), (1,7),
+                       (2,4), (2,5), (2,6),
+                       (3,7),
+                       (4, 10),
+                       (5,7), (5,11),
+                       (6,7), (6,11),
+                       (8,9), (8,10), (8,11), (8,14), (8,15),
+                       (9,12), (9,14),
+                       (10,11), (10,12), (10,13), (10,14),
+                       (11,13),
+                       ])
+    G2_part = [[0,1,2,4,5], [3,6,7], [11,13], [8,9,10,12,14,15]]
+    print('G2 mod', modularity(G2, G2_part, weight='weight'))
+    
+    G3 = nx.Graph()
+    G3.add_nodes_from([x for x in range(4)])
+    G3.add_edges_from([(0, 0, {'weight': 7}),
+                       (1, 1, {'weight': 2}),
+                       (2, 2, {'weight': 8}),
+                       (3, 3, {'weight': 1}),
+                       (0, 1, {'weight': 4}),
+                       (0, 2, {'weight': 1}),
+                       (0, 3, {'weight': 1}),
+                       (1, 3, {'weight': 1}),
+                       (2, 3, {'weight': 3}),
+                       ])
+    G3_part = [[x] for x in G3.nodes()]
+    print('G3 mod', modularity(G3, G3_part, weight='weight'))
