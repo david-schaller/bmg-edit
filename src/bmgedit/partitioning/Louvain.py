@@ -14,55 +14,53 @@ __author__ = 'David Schaller'
 
 class Louvain:
     
-    def __init__(self, graph, weight='weight'):
+    def __init__(self, graph, weight='weight', print_info=False):
         
         if not isinstance(graph, nx.Graph) or graph.is_directed():
             raise TypeError("input graph must be an undirected NetworkX graph")
         
         self.orig_graph = graph
         self.weight = weight
+        self.print_info = print_info
         
-        self.level_graphs = [self._level_zero_graph()]
-               
-        self.level_mods = [modularity(self.level_graphs[0],
-                                      [[x] for x in self.level_graphs[0].nodes()],
-                                      weight=self.weight)
-                      ]
-        print(self.level_mods[0])
+        self._run()
         
     
-    def run(self):
+    def _run(self):
+        
+        self.partitions = [ [{x} for x in self.orig_graph.nodes()] ]
+        self.modularities = [ modularity(self.orig_graph,
+                                         self.partitions[0],
+                                         weight=self.weight) ]
+        
+        # construct the graph for the first level
+        graph = self._next_level_graph(self.orig_graph, self.partitions[0])
         
         while True:
             
-            graph = self.level_graphs[-1]
             level = Level(graph, weight=self.weight)
-            
-            part = list(level.communities.values())
-            print([[x.nodes for x in com] for com in part])
-            mod = modularity(graph, part, weight=self.weight)
-            print('+', level.total_modularity_gain,
-                  '=', self.level_mods[-1] + level.total_modularity_gain,
-                  '=', mod)
-            
-            nl_graph = self._next_level_graph(graph, part)
-            self.level_graphs.append(nl_graph)
-            self.level_mods.append(mod)
-            print(modularity(nl_graph, [[x] for x in nl_graph.nodes()],
-                             weight=self.weight))
-            for u,v, data in nl_graph.edges(data=True):
-                print(u.nodes, v.nodes, data)
-            
             
             if not level.moved_on_level:
                 break
-        
-    
-    def _level_zero_graph(self):
-        
-        partition = [[x] for x in self.orig_graph.nodes()]
-        
-        return self._next_level_graph(self.orig_graph, partition)
+            
+            # partition of the supernodes (= found communities)
+            sn_part = list(level.communities.values())
+            mod = modularity(graph, sn_part, weight=self.weight)
+            
+            self.partitions.append(level.get_partition())
+            self.modularities.append(mod)
+            
+            graph = self._next_level_graph(graph, sn_part)
+            
+            if self.print_info:
+                print('----- Level {} -----'.format(len(self.partitions)-1))
+                print('computed gain:',
+                      self.modularities[-2], '+', level.total_modularity_gain,
+                      '=', self.modularities[-2] + level.total_modularity_gain)
+                print('mod. based on supernodes:', mod)
+                print('mod. based on original graph',
+                      modularity(self.orig_graph, self.partitions[-1],
+                                 weight=self.weight))
     
     
     def _next_level_graph(self, graph, partition):
@@ -274,8 +272,7 @@ if __name__ == '__main__':
     
     print(modularity(G, part, weight='weight'))
     
-    louv = Louvain(G)
-    louv.run()
+    louv = Louvain(G, print_info=True)
     
     G2 = nx.Graph()
     G2.add_nodes_from([x for x in range(16)])
@@ -291,20 +288,7 @@ if __name__ == '__main__':
                        (10,11), (10,12), (10,13), (10,14),
                        (11,13),
                        ])
-    G2_part = [[0,1,2,4,5], [3,6,7], [11,13], [8,9,10,12,14,15]]
-    print('G2 mod', modularity(G2, G2_part, weight='weight'))
     
-    G3 = nx.Graph()
-    G3.add_nodes_from([x for x in range(4)])
-    G3.add_edges_from([(0, 0, {'weight': 7}),
-                       (1, 1, {'weight': 2}),
-                       (2, 2, {'weight': 8}),
-                       (3, 3, {'weight': 1}),
-                       (0, 1, {'weight': 4}),
-                       (0, 2, {'weight': 1}),
-                       (0, 3, {'weight': 1}),
-                       (1, 3, {'weight': 1}),
-                       (2, 3, {'weight': 3}),
-                       ])
-    G3_part = [[x] for x in G3.nodes()]
-    print('G3 mod', modularity(G3, G3_part, weight='weight'))
+    louv = Louvain(G2, print_info=True)
+    for mod, part in zip(louv.modularities, louv.partitions):
+        print(part, mod)
