@@ -65,8 +65,7 @@ class Louvain:
     """
     
     def __init__(self, graph, weight='weight',
-                 cost_function=None,
-                 cost_function_args=None,
+                 at_least_two=False,
                  print_info=False):
         """Constructor for the Louvain class.
         
@@ -80,6 +79,10 @@ class Louvain:
             The name of the attribute used for edge weighting. The edges of
             `graph` must have this attribute (the default is 'weight', in which
              case edges without this attribute have weight 1.0).
+        at_least_two : bool, optional
+            If True and the graph has at least two nodes, then the best
+            partition is forced to consist of at least two sets, i.e., at least
+            two communities are formed (the default is False).
         print_info : bool, optional
             Print the modularity results after each level (the default is
             False).
@@ -90,6 +93,7 @@ class Louvain:
         
         self.orig_graph = graph
         self.weight = weight
+        self.at_least_two = at_least_two
         self.print_info = print_info
         
         self._run()
@@ -107,7 +111,8 @@ class Louvain:
         
         while True:
             
-            level = _Level(graph, weight=self.weight)
+            level = _Level(graph, weight=self.weight,
+                           at_least_two=self.at_least_two)
             
             if not level.moved_on_level:
                 break
@@ -174,8 +179,9 @@ class LouvainCustomCost:
     """
     
     def __init__(self, graph,
-                 cost_function=None,
-                 cost_function_args=None,
+                 cost_function,
+                 args=(),
+                 at_least_two=False,
                  print_info=False):
         """Constructor for the Louvain class.
         
@@ -185,11 +191,15 @@ class LouvainCustomCost:
         ----------
         graph : networkx.Graph
             The graph in which communities shall be found.
-        cost_function : function object, optional
-            Custom function that is used instead of modularity optimization
-            (the default is None).
-        cost_function_args : tuple, optional
-            Additional argument relevant for a custom cost function.
+        cost_function : function object
+            Custom function that is used instead of modularity optimization.
+        args : tuple, optional
+            Additional arguments relevant for a custom cost function (the
+            default is an empty tuple).
+        at_least_two : bool, optional
+            If True and the graph has at least two nodes, then the best
+            partition is forced to consist of at least two sets, i.e., at least
+            two communities are formed (the default is False).
         print_info : bool, optional
             Print the modularity results after each level (the default is
             False).
@@ -200,7 +210,8 @@ class LouvainCustomCost:
         
         self.orig_graph = graph
         self.cost_function = cost_function
-        self.cost_function_args = cost_function_args
+        self.args = args
+        self.at_least_two = at_least_two
         self.print_info = print_info
         
         self._run()
@@ -210,7 +221,7 @@ class LouvainCustomCost:
         
         self.partitions = [ [{x} for x in self.orig_graph.nodes()] ]
         self.costs = [ self.cost_function(self.partitions[0],
-                                          *self.cost_function_args) ]
+                                          *self.args) ]
         
         # construct the graph for the first level
         graph = self._next_level_graph(self.orig_graph, self.partitions[0])
@@ -219,7 +230,8 @@ class LouvainCustomCost:
             
             level = _Level(graph,
                            cost_function=self.cost_function,
-                           cost_function_args=self.cost_function_args)
+                           args=self.args,
+                           at_least_two=self.at_least_two)
             
             if not level.moved_on_level:
                 break
@@ -230,7 +242,8 @@ class LouvainCustomCost:
             self.partitions.append(part)
             self.costs.append(self.costs[-1] - level.total_gain)
             
-            graph = self._next_level_graph(graph, part)
+            graph = self._next_level_graph(graph,
+                                           list(level.communities.values()))
             
             if self.print_info:
                 print('----- Level {} -----'.format(len(self.partitions)-1))
@@ -239,7 +252,7 @@ class LouvainCustomCost:
                       '=', self.costs[-2] + level.total_gain)
                 print('mod. based on original graph',
                       self.cost_function(self.partitions[-1],
-                                         *self.cost_function_args))
+                                         *self.args))
     
     
     def _next_level_graph(self, graph, partition):
@@ -272,12 +285,14 @@ class _Level:
     """Clustering on a single level in the Louvain method."""
     
     def __init__(self, graph, weight='weight',
-                 cost_function=None, cost_function_args=None):
+                 cost_function=None, args=(),
+                 at_least_two=False,):
         
         self.graph = graph
         self.weight = weight
         self.cost_function = cost_function
-        self.cost_function_args = cost_function_args
+        self.args = args
+        self.at_least_two = at_least_two
         
         self.nodes = [x for x in self.graph.nodes()]
         random.shuffle(self.nodes)
@@ -322,6 +337,11 @@ class _Level:
             for x in self.nodes:
                 
                 C_x = self.node_to_com[x]
+                
+                # check if we would merge the last two communities
+                if (self.at_least_two and len(self.communities) == 2 and
+                    len(self.communities[C_x]) == 1):
+                    continue
                 
                 # maps community C to the sum of weights of the links of x to
                 # elements in C \ {x}
@@ -377,8 +397,7 @@ class _Level:
         # avoid recomputation of the partition in each iteration
         part = {i: set(x.nodes) for x, i in self.node_to_com.items()}
         
-        cost = self.cost_function(self.get_partition(),
-                                  *self.cost_function_args)
+        cost = self.cost_function(self.get_partition(), *self.args)
     
         while True:
             moved_node = False
@@ -386,6 +405,11 @@ class _Level:
             for x in self.nodes:
                 
                 C_x = self.node_to_com[x]
+                
+                # check if we would merge the last two communities
+                if (self.at_least_two and len(self.communities) == 2 and
+                    len(self.communities[C_x]) == 1):
+                    continue
                 
                 # remove x from its community
                 self.communities[C_x].remove(x)
@@ -404,8 +428,7 @@ class _Level:
                         continue
                     
                     part[C_y].update(x.nodes)
-                    new_cost = self.cost_function(self.get_partition(),
-                                                  *self.cost_function_args)
+                    new_cost = self.cost_function(part.values(), *self.args)
                     part[C_y].difference_update(x.nodes)
                     
                     new_gain = cost - new_cost
@@ -450,7 +473,7 @@ class _Level:
             if x == y:
                 continue
             C = self.node_to_com[y]
-            w = self.graph.get_edge_data(x, y).get('weight', 1.0)
+            w = self.graph.get_edge_data(x, y).get(self.weight, 1.0)
             weight_sums[C] = weight_sums.get(C, 0.0) + w
         
         return weight_sums
