@@ -2,6 +2,12 @@
 
 """
 Implementation of the Louvain method for community detection.
+
+References
+----------
+.. [1] Blondel V.D., Guillaume J.-L., Lambiotte R., Lefebvre E. (2008)
+   Fast unfolding of communities in large networks. J. Stat. Mech.
+   doi:10.1088/1742-5468/2008/10/P10008
 """
 
 import random, itertools
@@ -13,8 +19,33 @@ __author__ = 'David Schaller'
 
 
 class Louvain:
+    """
+    Implementation of the Louvain method for community detection.
+    
+    References
+    ----------
+    .. [1] Blondel V.D., Guillaume J.-L., Lambiotte R., Lefebvre E. (2008)
+       Fast unfolding of communities in large networks. J. Stat. Mech.
+       doi:10.1088/1742-5468/2008/10/P10008
+    """
     
     def __init__(self, graph, weight='weight', print_info=False):
+        """Constructor for the Louvain class.
+        
+        Runs the identification of communities.
+        
+        Parameters
+        ----------
+        graph : networkx.Graph
+            The graph in which communities shall be found.
+        weight : str, optional
+            The name of the attribute used for edge weighting. The edges of
+            `graph` must have this attribute (the default is 'weight', in which
+            case edges without this attribute have weight 1.0).
+        print_info : bool, optional
+            Print the modularity results after each level (the default is
+            False).
+        """
         
         if not isinstance(graph, nx.Graph) or graph.is_directed():
             raise TypeError("input graph must be an undirected NetworkX graph")
@@ -38,7 +69,7 @@ class Louvain:
         
         while True:
             
-            level = Level(graph, weight=self.weight)
+            level = _Level(graph, weight=self.weight)
             
             if not level.moved_on_level:
                 break
@@ -71,10 +102,10 @@ class Louvain:
         old_to_new = {}
         
         for i, part_set in enumerate(partition):
-            new_node = Supernode()
+            new_node = _Supernode()
             nl_graph.add_node(new_node)
             for old_node in part_set:
-                if isinstance(old_node, Supernode):
+                if isinstance(old_node, _Supernode):
                     new_node.extend(old_node)
                 else:
                     new_node.append(old_node)
@@ -93,7 +124,13 @@ class Louvain:
         return nl_graph
 
 
-class Supernode:
+class _Supernode:
+    """Wrapper class for communities on the previous levels.
+    
+    The communities found in each level are the nodes in the next level. This
+    class contains all nodes of the original graph that belong to such a 
+    supernode.
+    """
     
     __slots__ = ('nodes',)
     
@@ -122,7 +159,8 @@ class Supernode:
         self.nodes.extend(nodes)
         
         
-class Level:
+class _Level:
+    """Clustering on a single level in the Louvain method."""
     
     def __init__(self, graph, weight='weight'):
         
@@ -227,15 +265,8 @@ class Level:
         """Convert the communities of supernodes into a partition of the 
         orginal nodes."""
         
-        partition = []
-        
-        for com in self.communities.values():
-            part_set = set()
-            for supernode in com:
-                part_set.update(supernode.nodes)
-            partition.append(part_set)
-            
-        return partition
+        return [set(itertools.chain.from_iterable(com))
+                for com in self.communities.values()]
     
     
     def _weight_sums_to_communities(self, x):
@@ -256,37 +287,20 @@ class Level:
 
 if __name__ == '__main__':
     
-    # G = nx.erdos_renyi_graph(1000, 0.02)
+    # random graph
+    G = nx.erdos_renyi_graph(100, 0.02)
+    louv = Louvain(G, print_info=False)
+    for mod, part in zip(louv.modularities, louv.partitions):
+        print(mod)
     
-    
-    G = nx.Graph()
-    G.add_nodes_from([x for x in range(1,11)])
-    G.add_edges_from([(1,2), (2,3), (1,3),
-                      (4,5), (5,6), (4,6),
-                      (7,8), (8,9), (7,9),
-                      (3,10), (6,10), (9,10),])
-    
-    part = [[x] for x in G.nodes()]
-    # part = [[1,2,3], [4,5,6,10], [7,8,9]]
-    
-    
-    print(modularity(G, part, weight='weight'))
-    
-    louv = Louvain(G, print_info=True)
-    
+    # example from Blondel et al. 2008
     G2 = nx.Graph()
     G2.add_nodes_from([x for x in range(16)])
     G2.add_edges_from([(0,2), (0,3), (0,4), (0,5),
-                       (1,2), (1,4), (1,7),
-                       (2,4), (2,5), (2,6),
-                       (3,7),
-                       (4, 10),
-                       (5,7), (5,11),
-                       (6,7), (6,11),
-                       (8,9), (8,10), (8,11), (8,14), (8,15),
-                       (9,12), (9,14),
-                       (10,11), (10,12), (10,13), (10,14),
-                       (11,13),
+                       (1,2), (1,4), (1,7), (2,4), (2,5), (2,6),
+                       (3,7), (4, 10), (5,7), (5,11), (6,7), (6,11),
+                       (8,9), (8,10), (8,11), (8,14), (8,15), (9,12), (9,14),
+                       (10,11), (10,12), (10,13), (10,14), (11,13),
                        ])
     
     louv = Louvain(G2, print_info=True)
