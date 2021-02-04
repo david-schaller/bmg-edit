@@ -168,7 +168,7 @@ def partition(L, method,
     elif method == 'karger':
         karger = Karger(aux_graph)
         
-        for _, bp in karger.generate():
+        for _, bp in karger.generate(runs=greedy_repeats):
             cost = cost_function(bp, *args)
             
             if cost < best_cost:
