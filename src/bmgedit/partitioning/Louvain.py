@@ -102,6 +102,12 @@ class Louvain:
     def _run(self):
         
         self.partitions = [ [{x} for x in self.orig_graph.nodes()] ]
+        
+        # modularity is not defined for egdeless / zero-weight graphs
+        if not self.orig_graph.size(weight=self.weight):
+            self.modularities = [None]
+            return
+        
         self.modularities = [ modularity(self.orig_graph,
                                          self.partitions[0],
                                          weight=self.weight) ]
