@@ -210,7 +210,7 @@ if __name__ == '__main__':
     
     from asymmetree.tools.GraphTools import disturb_graph, symmetric_diff
     
-    random_tree = PhyloTree.random_colored_tree(20, 15,
+    random_tree = PhyloTree.random_colored_tree(20, 10,
                                                 force_all_colors=True)
     bmg = bmg_from_tree(random_tree)
     disturbed = disturb_graph(bmg, 0.1, 0.1, preserve_properly_colored=True)

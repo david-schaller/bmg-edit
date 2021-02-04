@@ -21,7 +21,8 @@ class Build2:
                  allow_inconsistency=True,
                  part_method='mincut',
                  cost_function=None, cost_function_args=None,
-                 weighted_mincut=False, triple_weights=None):
+                 greedy_repeats=5,
+                 weighted_mincut=False, triple_weights=None,):
         
         self.R = R
         self.L = L
@@ -41,6 +42,7 @@ class Build2:
         
         self.cost_function = cost_function
         self.cost_function_args = cost_function_args
+        self.greedy_repeats = greedy_repeats
             
         # parameters if bipartition method is mincut
         self.weighted_mincut = weighted_mincut
@@ -88,16 +90,21 @@ class Build2:
             
         aux_graph = aho_graph(R, L, weighted=self.weighted_mincut,
                                     triple_weights=self.triple_weights)
-        partition = list(nx.connected_components(aux_graph))
+        part = list(nx.connected_components(aux_graph))
         
-        if len(partition) < 2:
+        if len(part) < 2:
             if not self.allow_inconsistency:
                 return False
             else:
-                partition = self._partition(L, aux_graph)
+                cost, part = partition(L, self.part_method,
+                                       cost_function=self.cost_function,
+                                       args=self.cost_function_args,
+                                       aux_graph=aux_graph,
+                                       greedy_repeats=self.greedy_repeats)
+                self.total_cost += cost
         
         node = PhyloTreeNode(-1)            # place new inner node
-        for s in partition:
+        for s in part:
             Li, Ri = set(s), []
             for t in R:                     # construct triple subset
                 if Li.issuperset(t):
@@ -118,16 +125,21 @@ class Build2:
         if len(L) <= 2:
             return self._trivial_case(L)
         
-        partition, aux_graph = mtt_partition(L, R, F)
+        part, aux_graph = mtt_partition(L, R, F)
         
-        if len(partition) < 2:
+        if len(part) < 2:
             if not self.allow_inconsistency:
                 return False
             else:
-                partition = self._partition(L, aux_graph)
+                cost, part = partition(L, self.part_method,
+                                       cost_function=self.cost_function,
+                                       args=self.cost_function_args,
+                                       aux_graph=aux_graph,
+                                       greedy_repeats=self.greedy_repeats)
+                self.total_cost += cost
         
         node = PhyloTreeNode(-1)            # place new inner node
-        for s in partition:
+        for s in part:
             Li, Ri, Fi = set(s), [], []
             for Xi, X in ((Ri, R), (Fi, F)):
                 for t in X:
@@ -142,59 +154,59 @@ class Build2:
         return node
     
     
-    def _partition(self, L, aux_graph):
+def partition(L, method,
+              cost_function=None, args=None,
+              aux_graph=None,
+              greedy_repeats=1):
+    
+    best_cost, best_bp = float('inf'), None
+    
+    if method == 'mincut':
+        # Stoer–Wagner algorithm
+        best_cost, best_bp = nx.stoer_wagner(aux_graph)
+    
+    elif method == 'karger':
+        karger = Karger(aux_graph)
         
-        best_cost, best_bp = float('inf'), None
-        
-        if self.part_method == 'mincut':
-            # Stoer–Wagner algorithm
-            best_cost, best_bp = nx.stoer_wagner(aux_graph)
-        
-        elif self.part_method == 'karger':
-            karger = Karger(aux_graph)
+        for _, bp in karger.generate():
+            cost = cost_function(bp, *args)
             
-            for _, bp in karger.generate():
-                cost = self.cost_function(bp, *self.cost_function_args)
-                
-                if cost < best_cost:
-                    best_cost, best_bp = cost, bp
+            if cost < best_cost:
+                best_cost, best_bp = cost, bp
+    
+    elif method == 'greedy':
         
-        elif self.part_method == 'greedy':
-            
-            for _ in range(5):
-                cost, bp = greedy_bipartition(L, self.cost_function,
-                                              args=self.cost_function_args)
-                if cost < best_cost:
-                    best_cost, best_bp = cost, bp
+        for _ in range(greedy_repeats):
+            cost, bp = greedy_bipartition(L, cost_function, args=args)
+            if cost < best_cost:
+                best_cost, best_bp = cost, bp
+    
+    elif method == 'gradient_walk':
         
-        elif self.part_method == 'gradient_walk':
-            
-            for _ in range(5):
-                cost, bp = gradient_walk_bipartition(L, self.cost_function,
-                               args=self.cost_function_args)
-                if cost < best_cost:
-                    best_cost, best_bp = cost, bp
+        for _ in range(greedy_repeats):
+            cost, bp = gradient_walk_bipartition(L, cost_function,
+                                                 args=args)
+            if cost < best_cost:
+                best_cost, best_bp = cost, bp
+    
+    elif method == 'louvain':
         
-        elif self.part_method == 'louvain':
-            
-            best_mod = float('-inf')
-            best_cost = 0.0             # cost makes no sense here
-            
-            for _ in range(5):
-                louv = Louvain(aux_graph, at_least_two=True)
-                mod, bp = louv.modularities[-1], louv.partitions[-1]
-                if mod > best_mod:
-                    best_mod, best_bp = mod, bp
+        best_mod = float('-inf')
+        best_cost = 0.0             # cost makes no sense here
         
-        elif self.part_method == 'louvain_cost':
-            
-            for _ in range(5):
-                louv = LouvainCustomCost(aux_graph, self.cost_function,
-                                         args=self.cost_function_args,
-                                         at_least_two=True)
-                cost, bp = louv.costs[-1], louv.partitions[-1]
-                if cost < best_cost:
-                    best_cost, best_bp = cost, bp
+        for _ in range(greedy_repeats):
+            louv = Louvain(aux_graph, at_least_two=True)
+            mod, bp = louv.modularities[-1], louv.partitions[-1]
+            if mod > best_mod:
+                best_mod, best_bp = mod, bp
+    
+    elif method == 'louvain_cost':
         
-        self.total_cost += best_cost
-        return best_bp
+        for _ in range(greedy_repeats):
+            louv = LouvainCustomCost(aux_graph, cost_function, args=args,
+                                     at_least_two=True)
+            cost, bp = louv.costs[-1], louv.partitions[-1]
+            if cost < best_cost:
+                best_cost, best_bp = cost, bp
+    
+    return best_cost, best_bp
