@@ -48,22 +48,35 @@ class BMGEditor:
         return lca.consistent_triples(self.R)
     
     
-    def build(self, mode):
+    def build(self, method, objective='cost'):
         
-        mode = mode.lower()
+        if objective == 'cost':
+            minimize = True
+            f_obj = unsatisfiability_cost
+        elif objective == 'gain':
+            minimize = False
+            f_obj = satisfied_relations
+        else:
+            raise ValueError('unknown mode for objective ' \
+                             'function: {}'.format(objective))
         
-        if mode == 'bpmf':
+        method = method.lower()
+        
+        if method == 'bpmf':
             self._tree = best_pair_merge_first(self.R, self.L,
-                                           triple_weights=None)
-        elif mode in ('mincut', 'karger', 'greedy', 'gradient_walk',
-                      'louvain', 'louvain_cost'):
+                                               triple_weights=None)
+        elif method in ('mincut', 'karger', 'greedy', 'gradient_walk',
+                        'louvain', 'louvain_obj'):
             build = Build2(self.R, self.L,
                            allow_inconsistency=True,
-                           part_method=mode,
-                           obj_function=unsatisfiability_cost,
+                           part_method=method,
+                           obj_function=f_obj,
+                           minimize=minimize,
                            obj_function_args=(self.G,),
                            weighted_mincut=True)
             self._tree = build.build_tree()
+        else:
+            raise ValueError('unknown partition method: {}'.format(method))
     
     
     def get_bmg(self, extract_triples_first=False):
@@ -205,7 +218,7 @@ def get_U1_U2_U3(partition, G):
 
 
 def satisfied_relations(partition, G):
-    """Return the no. of arc and non-arcs that are satisfied by a partition.
+    """Return the no. of arcs and non-arcs that are satisfied by a partition.
     
     Only considers pairs of vertices of different color.
     
@@ -262,6 +275,71 @@ def satisfied_relations(partition, G):
     return count
 
 
+def get_S1_S2_S3(partition, G):
+    """Get the arcs and non-arcs that are satisfied by a partition of each type.
+    
+    S1: (x, y) notin E,
+        x in V_i, y in V \ V_i,
+        color of y is present in V_i
+    S2: (x, y) in E,
+        x in V_i, y in V \ V_i,
+        color of y is not present in V_i
+    S3: (x, y) in E,
+        distinct x, y in V_i
+        y is the only vertex of its color in V_i.
+    
+    Parameters
+    ----------
+    partition : iterable of iterables of nodes
+        A partition for (a subset of) the nodes in the graph.
+    G : networkx.DiGraph
+        A directed graph.
+    
+    Returns
+    -------
+    tuple of three lists of arcs
+        The arcs and non-arcs that are satisfied by a partition if this
+        partition corresponds to a split in a tree sorted by the three types.
+    """
+    
+    partition = list(partition)
+    color_sets = [{} for V in partition]
+    
+    for V, colors in zip(partition, color_sets):
+        for v in V:
+            c = G.nodes[v]['color']
+            if c not in colors:
+                colors[c] = 1
+            else:
+                colors[c] += 1
+    
+    S1, S2, S3 = [], [], []
+    
+    for V, colors in zip(partition, color_sets):
+        
+        if not isinstance(V, set):
+            V = set(V)
+        
+        for x, y in itertools.product(V, G.nodes()):
+            
+            y_color = G.nodes[y]['color']
+            
+            # skip pairs with the same color
+            if G.nodes[x]['color'] == y_color:
+                continue
+            
+            if y not in V:
+                if not G.has_edge(x, y):
+                    if colors.get(y_color):
+                        S1.append( (x, y) )
+                elif not colors.get(y_color):
+                    S2.append( (x, y) )
+            elif G.has_edge(x, y) and colors.get(y_color) == 1:
+                S3.append( (x, y) )
+                    
+    return S1, S2, S3
+
+
 if __name__ == '__main__':
     
     from time import time
@@ -284,18 +362,18 @@ if __name__ == '__main__':
     print('-------------')
     
     editor = BMGEditor(disturbed)
-    
-    for mode in ('Mincut', 'BPMF', 'Karger',
+    for method in ('Mincut', 'BPMF', 'Karger',
                  'Greedy', 'Gradient_Walk',
-                 'Louvain', 'Louvain_Cost'):
-        start_time = time()
-        editor.build(mode)
-        end_time = time() - start_time
-        bmg1 = editor.get_bmg(extract_triples_first=False)
-        bmg2 = editor.get_bmg(extract_triples_first=True)
-        print('-----', mode, '-----')
-        print('time:', end_time)
-        print('orig./dist. vs BMG1 (no extr):',
-              symmetric_diff(bmg, bmg1), symmetric_diff(disturbed, bmg1))
-        print('orig./dist. vs BMG2 (extr):',
-              symmetric_diff(bmg, bmg2), symmetric_diff(disturbed, bmg2))
+                 'Louvain', 'Louvain_Obj'):
+        for objective in ('cost', 'gain'):
+            start_time = time()
+            editor.build(method, objective=objective)
+            end_time = time() - start_time
+            bmg1 = editor.get_bmg(extract_triples_first=False)
+            bmg2 = editor.get_bmg(extract_triples_first=True)
+            print('-----', method, objective, '-----')
+            print('time:', end_time)
+            print('orig./dist. vs BMG1 (no extr):',
+                  symmetric_diff(bmg, bmg1), symmetric_diff(disturbed, bmg1))
+            print('orig./dist. vs BMG2 (extr):',
+                  symmetric_diff(bmg, bmg2), symmetric_diff(disturbed, bmg2))
