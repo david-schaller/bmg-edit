@@ -29,8 +29,8 @@ def _move(from_set, to_set, x):
     to_set.add(x)
 
 
-def greedy_bipartition(V, f_cost, args=()):
-    """Randomized greedy bipartitioning with custom cost function."""
+def greedy_bipartition(V, f_obj, minimize=True, args=()):
+    """Randomized greedy bipartitioning with custom objective function."""
     
     if len(V) < 2:
         raise ValueError('iterable must have >=2 elements')
@@ -38,18 +38,22 @@ def greedy_bipartition(V, f_cost, args=()):
     V1, V2 = set(), set(V)
     remaining = set(V)
     
-    best_cost, best_bp = float('inf'), None
+    best_obj = float('inf') if minimize else float('-inf')
+    best_bp = None
     
     for _ in range(len(V)-1):
         
-        best_cost_local, best_x = float('inf'), None
+        best_obj_local = float('inf') if minimize else float('-inf')
+        best_x = None
+        
         for x in remaining:
             _move(V2, V1, x)
-            cost = f_cost([V1, V2], *args)
-            if cost < best_cost_local:
-                best_cost_local = cost
+            obj = f_obj([V1, V2], *args)
+            if ((minimize and obj < best_obj_local) or
+                (not minimize and obj > best_obj_local)):
+                best_obj_local = obj
                 best_x = [x]
-            elif cost == best_cost_local:
+            elif obj == best_obj_local:
                 best_x.append(x) 
             _move(V1, V2, x)
             
@@ -57,20 +61,23 @@ def greedy_bipartition(V, f_cost, args=()):
         _move(V2, V1, x)
         remaining.remove(x)
         
-        if best_cost_local < best_cost:
-            best_cost = best_cost_local
+        if ((minimize and best_obj_local < best_obj) or
+            (not minimize and best_obj_local > best_obj)):
+            best_obj = best_obj_local
             best_bp = [(list(V1), list(V2))]
-        elif best_cost_local == best_cost:
+        elif best_obj_local == best_obj:
             best_bp.append( (list(V1), list(V2)) )
             
-    return best_cost, random.choice(best_bp)
+    return best_obj, random.choice(best_bp)
 
 
 # ----------------------------------------------------------------------------
 #                        Adaptive walk bipartition
 # ----------------------------------------------------------------------------
 
-def gradient_walk_bipartition(V, f_cost, args=(), initial_bipartition=None):
+def gradient_walk_bipartition(V, f_obj, 
+                              minimize=True, args=(),
+                              initial_bipartition=None):
     
     if len(V) < 2:
         raise ValueError('iterable must have >=2 elements')
@@ -96,12 +103,14 @@ def gradient_walk_bipartition(V, f_cost, args=(), initial_bipartition=None):
     else:
         raise ValueError('not a bipartition')
         
-    best_cost = f_cost([*P], *args)
-    best_bp = tuple(list(s) for s in P)
+    best_obj = f_obj([*P], *args)
+    best_bp = [list(s) for s in P]
     
     while True:
         
-        best_cost_local, best_x = float('inf'), None
+        best_obj_local = float('inf') if minimize else float('-inf')
+        best_x = None
+        
         for x in V:
             V1 = P[lookup[x]]
             V2 = P[(lookup[x] + 1) % 2]
@@ -111,27 +120,29 @@ def gradient_walk_bipartition(V, f_cost, args=(), initial_bipartition=None):
                 continue
             
             _move(V1, V2, x)
-            cost = f_cost([V1, V2], *args)
-            if cost < best_cost_local:
-                best_cost_local = cost
+            obj = f_obj([V1, V2], *args)
+            if ((minimize and obj < best_obj_local) or
+                (not minimize and obj > best_obj_local)):
+                best_obj_local = obj
                 best_x = [x]
-            elif cost == best_cost_local:
+            elif obj == best_obj_local:
                 best_x.append(x) 
             _move(V2, V1, x)
         
-        if best_cost_local < best_cost:
+        if ((minimize and best_obj_local < best_obj) or
+            (not minimize and best_obj_local > best_obj)):
             x = random.choice(best_x)
             V1 = P[lookup[x]]
             V2 = P[(lookup[x] + 1) % 2]
             _move(V1, V2, x)
             lookup[x] = (lookup[x] + 1) % 2
             
-            best_cost = best_cost_local
-            best_bp = tuple(list(s) for s in P)
+            best_obj = best_obj_local
+            best_bp = [list(s) for s in P]
         else:
             break
     
-    return best_cost, best_bp
+    return best_obj, best_bp
         
     
 

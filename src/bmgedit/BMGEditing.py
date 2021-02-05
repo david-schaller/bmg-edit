@@ -60,8 +60,8 @@ class BMGEditor:
             build = Build2(self.R, self.L,
                            allow_inconsistency=True,
                            part_method=mode,
-                           cost_function=unsatisfiability_cost,
-                           cost_function_args=(self.G,),
+                           obj_function=unsatisfiability_cost,
+                           obj_function_args=(self.G,),
                            weighted_mincut=True)
             self._tree = build.build_tree()
     
@@ -204,13 +204,71 @@ def get_U1_U2_U3(partition, G):
     return U1, U2, U3
 
 
+def satisfied_relations(partition, G):
+    """Return the no. of arc and non-arcs that are satisfied by a partition.
+    
+    Only considers pairs of vertices of different color.
+    
+    Parameters
+    ----------
+    partition : iterable of iterables of nodes
+        A partition for (a subset of) the nodes in the graph.
+    G : networkx.DiGraph
+        A directed graph.
+    
+    Returns
+    -------
+    int
+        The number of best match arcs and non-arcs between vertices of
+        different colors that are satisfied if the partition corresponds to
+        a split in a leaf-colored tree.
+    """
+    
+    partition = list(partition)
+    color_sets = [{} for V in partition]
+    
+    for V, colors in zip(partition, color_sets):
+        for v in V:
+            c = G.nodes[v]['color']
+            if c not in colors:
+                colors[c] = 1
+            else:
+                colors[c] += 1
+    
+    count = 0
+    
+    for V, colors in zip(partition, color_sets):
+        
+        if not isinstance(V, set):
+            V = set(V)
+        
+        for x, y in itertools.product(V, G.nodes()):
+            
+            y_color = G.nodes[y]['color']
+            
+            # skip pairs with the same color
+            if G.nodes[x]['color'] == y_color:
+                continue
+            
+            if y not in V:
+                if not G.has_edge(x, y):
+                    if colors.get(y_color):
+                        count += 1
+                elif not colors.get(y_color):
+                    count += 1
+            elif G.has_edge(x, y) and colors.get(y_color) == 1:
+                count += 1
+                    
+    return count
+
+
 if __name__ == '__main__':
     
     from time import time
     
     from asymmetree.tools.GraphTools import disturb_graph, symmetric_diff
     
-    random_tree = PhyloTree.random_colored_tree(20, 10,
+    random_tree = PhyloTree.random_colored_tree(30, 10,
                                                 force_all_colors=True)
     bmg = bmg_from_tree(random_tree)
     disturbed = disturb_graph(bmg, 0.1, 0.1, preserve_properly_colored=True)
@@ -227,7 +285,7 @@ if __name__ == '__main__':
     
     editor = BMGEditor(disturbed)
     
-    for mode in ('Mincut', 'BPMF', #'Karger',
+    for mode in ('Mincut', 'BPMF', 'Karger',
                  'Greedy', 'Gradient_Walk',
                  'Louvain', 'Louvain_Cost'):
         start_time = time()

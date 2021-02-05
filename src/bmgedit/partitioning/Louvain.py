@@ -173,9 +173,9 @@ class Louvain:
         return nl_graph
 
 
-class LouvainCustomCost:
+class LouvainCustomObj:
     """
-    Louvain method for community detection with a customized cost function.
+    Louvain method for community detection with a customized objetive function.
     
     References
     ----------
@@ -185,7 +185,8 @@ class LouvainCustomCost:
     """
     
     def __init__(self, graph,
-                 cost_function,
+                 obj_function,
+                 minimize=True,
                  args=(),
                  at_least_two=False,
                  print_info=False):
@@ -197,10 +198,13 @@ class LouvainCustomCost:
         ----------
         graph : networkx.Graph
             The graph in which communities shall be found.
-        cost_function : function object
+        obj_function : function object
             Custom function that is used instead of modularity optimization.
+        minimize : bool
+            If True, minimize the objetive function, else maximize (the default
+            is True, i.e., minimization).
         args : tuple, optional
-            Additional arguments relevant for a custom cost function (the
+            Additional arguments relevant for a custom objective function (the
             default is an empty tuple).
         at_least_two : bool, optional
             If True and the graph has at least two nodes, then the best
@@ -215,7 +219,8 @@ class LouvainCustomCost:
             raise TypeError("input graph must be an undirected NetworkX graph")
         
         self.orig_graph = graph
-        self.cost_function = cost_function
+        self.obj_function = obj_function
+        self.minimize = minimize
         self.args = args
         self.at_least_two = at_least_two
         self.print_info = print_info
@@ -226,8 +231,10 @@ class LouvainCustomCost:
     def _run(self):
         
         self.partitions = [ [{x} for x in self.orig_graph.nodes()] ]
-        self.costs = [ self.cost_function(self.partitions[0],
-                                          *self.args) ]
+        self.objectives = [ self.obj_function(self.partitions[0],
+                                              *self.args) ]
+        
+        min_factor = 1 if self.minimize else -1
         
         # construct the graph for the first level
         graph = self._next_level_graph(self.orig_graph, self.partitions[0])
@@ -235,7 +242,8 @@ class LouvainCustomCost:
         while True:
             
             level = _Level(graph,
-                           cost_function=self.cost_function,
+                           obj_function=self.obj_function,
+                           minimize=self.minimize,
                            args=self.args,
                            at_least_two=self.at_least_two)
             
@@ -246,19 +254,19 @@ class LouvainCustomCost:
             part = level.get_partition()
             
             self.partitions.append(part)
-            self.costs.append(self.costs[-1] - level.total_gain)
+            self.objectives.append(self.objectives[-1] - 
+                                   min_factor * level.total_gain)
             
             graph = self._next_level_graph(graph,
                                            list(level.communities.values()))
             
             if self.print_info:
                 print('----- Level {} -----'.format(len(self.partitions)-1))
-                print('computed gain:',
-                      self.costs[-2], '-', level.total_gain,
-                      '=', self.costs[-2] + level.total_gain)
+                print('computed gain:', level.total_gain, '-->',
+                      self.objectives[-2] - min_factor * level.total_gain)
                 print('mod. based on original graph',
-                      self.cost_function(self.partitions[-1],
-                                         *self.args))
+                      self.obj_function(self.partitions[-1],
+                                        *self.args))
     
     
     def _next_level_graph(self, graph, partition):
@@ -291,12 +299,13 @@ class _Level:
     """Clustering on a single level in the Louvain method."""
     
     def __init__(self, graph, weight='weight',
-                 cost_function=None, args=(),
+                 obj_function=None, minimize=True, args=(),
                  at_least_two=False,):
         
         self.graph = graph
         self.weight = weight
-        self.cost_function = cost_function
+        self.obj_function = obj_function
+        self._opt_mode = 1 if minimize else -1
         self.args = args
         self.at_least_two = at_least_two
         
@@ -309,10 +318,10 @@ class _Level:
         self.moved_on_level = False
         self.total_gain = 0.0
         
-        if self.cost_function is None:
+        if self.obj_function is None:
             self._cluster_by_modularity()
         else:
-            self._cluster_by_cost()
+            self._cluster_by_obj()
     
     
     def _cluster_by_modularity(self):
@@ -394,7 +403,7 @@ class _Level:
                 break
     
     
-    def _cluster_by_cost(self):
+    def _cluster_by_obj(self):
         
         # for an edgeless graph, every node is in its own cluster
         if self.graph.size() == 0:
@@ -403,7 +412,7 @@ class _Level:
         # avoid recomputation of the partition in each iteration
         part = {i: set(x.nodes) for x, i in self.node_to_com.items()}
         
-        cost = self.cost_function(self.get_partition(), *self.args)
+        obj = self.obj_function(self.get_partition(), *self.args)
     
         while True:
             moved_node = False
@@ -434,10 +443,10 @@ class _Level:
                         continue
                     
                     part[C_y].update(x.nodes)
-                    new_cost = self.cost_function(part.values(), *self.args)
+                    new_obj = self.obj_function(part.values(), *self.args)
                     part[C_y].difference_update(x.nodes)
                     
-                    new_gain = cost - new_cost
+                    new_gain = self._opt_mode * (obj - new_obj)
                     
                     if new_gain > best_gain:
                         best_gain = new_gain
@@ -449,7 +458,7 @@ class _Level:
                 part[best_C].update(x.nodes)
                 self.node_to_com[x] = best_C
                 self.total_gain += best_gain
-                cost -= best_gain
+                obj -= self._opt_mode * best_gain
                 
                 # remove the original community if it is now empty
                 if len(self.communities[C_x]) == 0:
