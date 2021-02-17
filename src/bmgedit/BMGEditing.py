@@ -23,17 +23,21 @@ __author__ = 'David Schaller'
 class BMGEditor:
     """Wrapper for triple-based BMG editing heuristics."""
     
-    def __init__(self, G):
+    def __init__(self, G, binary=False):
         
         self.G = G
         self.color_dict = sort_by_colors(G)
+        self.binary = binary
         
         self.L = [v for v in G.nodes()]
         
-        # informative and forbidden triples
-        self.R, self.F = LRT.informative_forbidden_triples(G,
-                             color_dict=self.color_dict)
-        
+        # informative triples
+        if not self.binary:
+            self.R = LRT.informative_triples(G, color_dict=self.color_dict)
+        else:
+            self.R = LRT.binary_explainable_triples(G,
+                                                    color_dict=self.color_dict)
+            
         # current tree built by one of the heuristics
         self._tree = None
         
@@ -69,6 +73,7 @@ class BMGEditor:
                         'louvain', 'louvain_obj'):
             build = Build2(self.R, self.L,
                            allow_inconsistency=True,
+                           resolve_to_binary=self.binary,
                            part_method=method,
                            obj_function=f_obj,
                            minimize=minimize,
@@ -87,7 +92,8 @@ class BMGEditor:
         
         else:
             R_consistent = self.extract_consistent_triples()
-            build = Build2(R_consistent, self.L, allow_inconsistency=False)
+            build = Build2(R_consistent, self.L, allow_inconsistency=False,
+                           resolve_to_binary=self.binary)
             tree = build.build_tree()
             tree.reconstruct_info_from_graph(self.G)
             return bmg_from_tree(tree)
@@ -363,8 +369,8 @@ if __name__ == '__main__':
     
     editor = BMGEditor(disturbed)
     for method in ('Mincut', 'BPMF', 'Karger',
-                 'Greedy', 'Gradient_Walk',
-                 'Louvain', 'Louvain_Obj'):
+                   'Greedy', 'Gradient_Walk',
+                   'Louvain', 'Louvain_Obj'):
         for objective in ('cost', 'gain'):
             start_time = time()
             editor.build(method, objective=objective)

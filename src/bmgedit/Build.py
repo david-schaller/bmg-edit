@@ -19,6 +19,7 @@ class Build2:
     
     def __init__(self, R, L, F=None,
                  allow_inconsistency=True,
+                 resolve_to_binary=False,
                  part_method='mincut',
                  obj_function=None,
                  minimize=True,
@@ -34,6 +35,7 @@ class Build2:
         
         # allow inconsistencies or return False?
         self.allow_inconsistency = allow_inconsistency
+        self.resolve_to_binary = resolve_to_binary
         
         if part_method in ('mincut', 'karger', 'greedy', 'gradient_walk',
                            'louvain', 'louvain_obj'):
@@ -107,8 +109,9 @@ class Build2:
                                       greedy_repeats=self.greedy_repeats)
                 self.total_obj += obj
         
-        node = PhyloTreeNode(-1)            # place new inner node
-        for s in part:
+        root = PhyloTreeNode(-1)            # place new inner node
+        node = root
+        for i, s in enumerate(part):
             Li, Ri = set(s), []
             for t in R:                     # construct triple subset
                 if Li.issuperset(t):
@@ -118,8 +121,14 @@ class Build2:
                 return False                # raise False to previous call
             else:
                 node.add_child(Ti)          # add roots of the subtrees
+            
+            # resolve to binary (caterpillar)
+            if self.resolve_to_binary and i < len(part)-2:
+                new_node = PhyloTreeNode(-1)
+                node.add_child(new_node)
+                node = new_node
    
-        return node
+        return root
     
     
     def _mtt(self, L, R, F):
@@ -143,8 +152,9 @@ class Build2:
                                       greedy_repeats=self.greedy_repeats)
                 self.total_obj += obj
         
-        node = PhyloTreeNode(-1)            # place new inner node
-        for s in part:
+        root = PhyloTreeNode(-1)            # place new inner node
+        node = root
+        for i, s in enumerate(part):
             Li, Ri, Fi = set(s), [], []
             for Xi, X in ((Ri, R), (Fi, F)):
                 for t in X:
@@ -155,8 +165,14 @@ class Build2:
                 return False                # raise False to previous call
             else:
                 node.add_child(Ti)          # add roots of the subtrees
+            
+            # resolve to binary (caterpillar)
+            if self.resolve_to_binary and i < len(part)-2:
+                new_node = PhyloTreeNode(-1)
+                node.add_child(new_node)
+                node = new_node
    
-        return node
+        return root
     
     
 def partition(L, method,
