@@ -92,7 +92,8 @@ class BMGEditor:
         
         else:
             R_consistent = self.extract_consistent_triples()
-            build = Build2(R_consistent, self.L, allow_inconsistency=False,
+            build = Build2(R_consistent, self.L,
+                           allow_inconsistency=False,
                            resolve_to_binary=self.binary)
             tree = build.build_tree()
             tree.reconstruct_info_from_graph(self.G)
