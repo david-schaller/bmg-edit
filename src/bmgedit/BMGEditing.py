@@ -23,18 +23,19 @@ __author__ = 'David Schaller'
 class BMGEditor:
     """Wrapper for triple-based BMG editing heuristics."""
     
-    def __init__(self, G, binary=False):
+    def __init__(self, G, binary=False, binarization_mode='balanced'):
         
         self.G = G
         self.color_dict = sort_by_colors(G)
-        self.binary = binary
         
         self.L = [v for v in G.nodes()]
         
         # informative triples
-        if not self.binary:
+        if not binary:
+            self.binarize = False
             self.R = LRT.informative_triples(G, color_dict=self.color_dict)
         else:
+            self.binarize = binarization_mode
             self.R = LRT.binary_explainable_triples(G,
                                                     color_dict=self.color_dict)
             
@@ -73,7 +74,7 @@ class BMGEditor:
                         'louvain', 'louvain_obj'):
             build = Build2(self.R, self.L,
                            allow_inconsistency=True,
-                           resolve_to_binary=self.binary,
+                           binarize=self.binarize,
                            part_method=method,
                            obj_function=f_obj,
                            minimize=minimize,
@@ -94,7 +95,7 @@ class BMGEditor:
             R_consistent = self.extract_consistent_triples()
             build = Build2(R_consistent, self.L,
                            allow_inconsistency=False,
-                           resolve_to_binary=self.binary)
+                           binarize=self.binarize)
             tree = build.build_tree()
             tree.reconstruct_info_from_graph(self.G)
             return bmg_from_tree(tree)
@@ -368,7 +369,7 @@ if __name__ == '__main__':
     print('original vs disturbed:', symmetric_diff(bmg, disturbed))
     print('-------------')
     
-    editor = BMGEditor(disturbed)
+    editor = BMGEditor(disturbed, binary=True)
     for method in ('Mincut', 'BPMF', 'Karger',
                    'Greedy', 'Gradient_Walk',
                    'Louvain', 'Louvain_Obj'):

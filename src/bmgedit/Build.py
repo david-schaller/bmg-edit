@@ -9,6 +9,7 @@ from bmgedit.partitioning.Karger import Karger
 from bmgedit.partitioning.GreedyBipartition import (greedy_bipartition,
                                                     gradient_walk_bipartition)
 from bmgedit.partitioning.Louvain import Louvain, LouvainCustomObj
+from bmgedit.partitioning.NumberPartition import balanced_coarse_graining
 
 
 __author__ = 'David Schaller'
@@ -19,7 +20,7 @@ class Build2:
     
     def __init__(self, R, L, F=None,
                  allow_inconsistency=True,
-                 resolve_to_binary=False,
+                 binarize=False,
                  part_method='mincut',
                  obj_function=None,
                  minimize=True,
@@ -35,15 +36,27 @@ class Build2:
         
         # allow inconsistencies or return False?
         self.allow_inconsistency = allow_inconsistency
-        self.resolve_to_binary = resolve_to_binary
         
+        # mode for tree binarization
+        if not binarize:
+            self.binarize = False
+        elif isinstance(binarize, str) and \
+            binarize.lower() in ('balanced', 'b'):
+            self.binarize = 'b'
+        elif isinstance(binarize, str) and \
+            binarize.lower() in ('caterpillar', 'c'):
+            self.binarize = 'c'
+        else:
+            raise ValueError('unknown binarization mode:' \
+                             ' {}'.format(binarize))
+        
+        # partitioning method in case of inconsistencies
         if part_method in ('mincut', 'karger', 'greedy', 'gradient_walk',
                            'louvain', 'louvain_obj'):
             self.part_method = part_method
         else:
             raise ValueError("unknown bipartition method "\
                              "'{}'".format(part_method))
-        
         self.obj_function =      obj_function
         self.minimize =          minimize
         self.obj_function_args = obj_function_args
@@ -109,6 +122,9 @@ class Build2:
                                       greedy_repeats=self.greedy_repeats)
                 self.total_obj += obj
         
+        if self.binarize == 'b' and len(part) > 2:
+            part = balanced_coarse_graining(part)
+        
         root = PhyloTreeNode(-1)            # place new inner node
         node = root
         for i, s in enumerate(part):
@@ -123,7 +139,7 @@ class Build2:
                 node.add_child(Ti)          # add roots of the subtrees
             
             # resolve to binary (caterpillar)
-            if self.resolve_to_binary and i < len(part)-2:
+            if self.binarize == 'c' and i < len(part)-2:
                 new_node = PhyloTreeNode(-1)
                 node.add_child(new_node)
                 node = new_node
@@ -152,6 +168,9 @@ class Build2:
                                       greedy_repeats=self.greedy_repeats)
                 self.total_obj += obj
         
+        if self.binarize == 'b' and len(part) > 2:
+            part = balanced_coarse_graining(part)
+        
         root = PhyloTreeNode(-1)            # place new inner node
         node = root
         for i, s in enumerate(part):
@@ -167,7 +186,7 @@ class Build2:
                 node.add_child(Ti)          # add roots of the subtrees
             
             # resolve to binary (caterpillar)
-            if self.resolve_to_binary and i < len(part)-2:
+            if self.binarize == 'c' and i < len(part)-2:
                 new_node = PhyloTreeNode(-1)
                 node.add_child(new_node)
                 node = new_node
