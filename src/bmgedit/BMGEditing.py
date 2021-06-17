@@ -85,12 +85,12 @@ class BMGEditor:
             raise ValueError('unknown partition method: {}'.format(method))
     
     
-    def get_bmg(self, extract_triples_first=False):
+    def get_bmg(self, extract_triples_first=False,
+                supply_inner_vertex_count=False):
         
         if not extract_triples_first:
             self._tree.reconstruct_info_from_graph(self.G)
-            return bmg_from_tree(self._tree)
-        
+            tree = self._tree
         else:
             R_consistent = self.extract_consistent_triples()
             build = Build2(R_consistent, self.L,
@@ -98,6 +98,10 @@ class BMGEditor:
                            binarize=self.binarize)
             tree = build.build_tree()
             tree.reconstruct_info_from_graph(self.G)
+        
+        if supply_inner_vertex_count:
+            return bmg_from_tree(tree), sum(1 for _ in tree.inner_nodes())
+        else:
             return bmg_from_tree(tree)
         
         

@@ -15,4 +15,4 @@ Implemention of various heuristics and ILP formulations for best match graph (BM
 * [AsymmeTree](https://github.com/david-schaller/AsymmeTree)
 
 In order to use the ILP versions for BMG editing, an installation of Gurobi Optimizer (9.0 or higher) or IBM ILOG CPLEX Optimization Studio (12.10 or higher) is required.
-Moreover, the corresponding Python packages `gurobipy` or `docplex` must be installed.
+Moreover, the corresponding Python packages `gurobipy` or `docplex`, respectively, must be installed.
