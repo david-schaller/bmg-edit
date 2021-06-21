@@ -5,7 +5,7 @@
 Implemention of various heuristics and ILP formulations for best match graph (BMG) editing.
 
 Best match graphs (BMGs) are a class of colored digraphs that naturally appear in mathematical phylogenetics as a representation of the pairwise most closely related genes among multiple species. An arc connects a gene x with a gene y from another species (encoded as the color of the nodes) Y whenever it is one of the phylogenetically closest relatives of x.
-This package contains various methods to edit an arbitrary vertex colored digraph to a valid BMG, i.e., a graph that has a certain representation as (leaf-colored) tree.
+This package contains various methods to edit an arbitrary vertex-colored digraph to a valid BMG, i.e., a graph that has a certain representation as (leaf-colored) tree.
 
 
 ## Installation and Dependencies
@@ -29,8 +29,8 @@ Moreover, all nodes must have an attribute 'color'.
 
 The following classes for optimal BMG editing are available in the module `ilp.GurobiBMG` (requires an installation of Gurobi Optimzizer):
 
-- **BMGEditor** edits the input graph with an arbitrary number to the closest BMG.
-- **BinaryBMGEditor** edits the input graph with an arbitrary number to the closest BMG that can be explained by a binary tree.
+- **BMGEditor** edits the input graph with an arbitrary number of colors to the closest BMG.
+- **BinaryBMGEditor** edits the input graph with an arbitrary number of colors to the closest BMG that can be explained by a binary tree.
 - **TwoBMGEditor** edits the input graph with at most two distinct colors to the closest (2-)BMG.
 
 <details>
@@ -48,7 +48,7 @@ The following classes for optimal BMG editing are available in the module `ilp.G
 
 The following classes for optimal BMG editing are available in the module `ilp.CplexBMG` (requires an installation of IBM ILOG CPLEX Optimization Studio):
 
-- **BMGEditor** edits the input graph with an arbitrary number to the closest BMG.
+- **BMGEditor** edits the input graph with an arbitrary number of colors to the closest BMG.
 
 <details>
 <summary>Example usage: (Click to expand)</summary>
@@ -68,7 +68,7 @@ The following classes for optimal BMG editing are available in the module `ilp.C
 
 The package also implements various heuristic approaches for BMG editing.
 Some of these methods are based on the unsatisfiable relation (UR) which are insertions or deletions of arcs that are associated with a certain inner node of the tree that explains the editing results.
-More precisely, the heuristics construct this tree in a top-down manner (i.e., starting with the root) and attempt, in each step, to minimie the UR (see refrenced paper below for details).
+More precisely, the heuristics construct this tree in a top-down manner (i.e., starting with the root) and attempt, in each step, to minimize the UR (see refrenced paper below for details).
 
 The class `BMGEditor` in the module `BMGEditor` manages the editing:
 
@@ -87,7 +87,7 @@ The class `BMGEditor` in the module `BMGEditor` manages the editing:
 - 'Louvain'
 - 'Louvain_Obj'
 
-See the paper for an explanation of the methods.
+See the paper for an explanation of these methods.
 </details>
 
 ## Citation and References
