@@ -46,15 +46,53 @@ The following classes for optimal BMG editing are available in the module `ilp.G
     
 </details>
 
-The following classes for optimal BMG editing are available in the module `ilp.GurobiBMG` (requires an installation of Gurobi Optimzizer):
+The following classes for optimal BMG editing are available in the module `ilp.CplexBMG` (requires an installation of IBM ILOG CPLEX Optimization Studio):
 
 - **BMGEditor** edits the input graph with an arbitrary number to the closest BMG.
-- **BinaryBMGEditor** edits the input graph with an arbitrary number to the closest BMG that can be explained by a binary tree.
-- **TwoBMGEditor** edits the input graph with at most two distinct colors to the closest (2-)BMG.
 
-Example usage:
+<details>
+<summary>Example usage: (Click to expand)</summary>
 
     solver = BMGEditor(input_graph)
     solver.build_model()
-    solver.optimize(time_limit=None)
+    
+    # run the optimization with an optional time limit in seconds
+    solver.optimize(time_limit=3)
+    solver.get_solution()
+    
     optimal_editing_cost, solution_graph = solver.get_solution()
+    
+</details>
+
+### Heuristics Algorithms
+
+The package also implements various heuristic approaches for BMG editing.
+Some of these methods are based on the unsatisfiable relation (UR) which are insertions or deletions of arcs that are associated with a certain inner node of the tree that explains the editing results.
+More precisely, the heuristics construct this tree in a top-down manner (i.e., starting with the root) and attempt, in each step, to minimie the UR (see refrenced paper below for details).
+
+The class `BMGEditor` in the module `BMGEditor` manages the editing:
+
+    editor = BMGEditor(disturbed, binary=True)
+    editor.build('Mincut', objective='cost')
+    solution_graph = editor.get_bmg(extract_triples_first=False)
+
+<details>
+<summary>The following methods are available (first parameter of the `build` method): (Click to expand)</summary>
+
+- 'Mincut'
+- 'BPMF'
+- 'Karger'
+- 'Greedy'
+- 'Gradient_Walk'
+- 'Louvain'
+- 'Louvain_Obj'
+
+See the paper for an explanation of the methods.
+</details>
+
+## Citation and References
+
+If you use AsymmeTree in your project or code from it, please consider citing:
+
+* **Schaller, D., Geiß, M., Hellmuth, M., Stadler, P. F. (2021) Heuristic Algorithms for Best Match Graph Editing.
+arXiv:2103.07280 [math.CO].**
