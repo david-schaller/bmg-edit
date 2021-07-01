@@ -7,8 +7,7 @@ Algorithms for graph (bi)partitioning.
 import random, math
 import networkx as nx
 
-from asymmetree.datastructures.LinkedList import LinkedList
-from asymmetree.datastructures.AVLTree import TreeSet
+from tralda.datastructures import LinkedList, TreeSet
 
 
 __author__ = 'David Schaller'

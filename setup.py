@@ -25,6 +25,7 @@ setuptools.setup(
         'scipy>=1.3.0',
         'matplotlib>=3.0',
         'networkx>=2.2',
-        'asymmetree>=1.0',
+        'asymmetree>=2.0.0',
+        'tralda>=0.0.1',
    ],
 )

@@ -4,15 +4,14 @@
 
 import itertools
 
-# import networkx as nx
+from tralda.datastructures import LCA
+from tralda.supertree.Build import best_pair_merge_first
+from tralda.tools.GraphTools import sort_by_colors
 
-from asymmetree.datastructures.PhyloTree import PhyloTree#, PhyloTreeNode
-
+from asymmetree.datastructures.PhyloTree import PhyloTree
 import asymmetree.best_matches.LeastResolvedTree as LRT
 from asymmetree.best_matches.TrueBMG import bmg_from_tree
-from asymmetree.tools.GraphTools import sort_by_colors
-from asymmetree.datastructures.Tree import LCA
-from asymmetree.tools.Build import best_pair_merge_first
+
 
 from bmgedit.Build import Build2
 
@@ -68,8 +67,9 @@ class BMGEditor:
         method = method.lower()
         
         if method == 'bpmf':
-            self._tree = best_pair_merge_first(self.R, self.L,
-                                               triple_weights=None)
+            self._tree = PhyloTree.to_phylotree( best_pair_merge_first(self.R,
+                                                     self.L,
+                                                     triple_weights=None) )
         elif method in ('mincut', 'karger', 'greedy', 'gradient_walk',
                         'louvain', 'louvain_obj'):
             build = Build2(self.R, self.L,
@@ -356,7 +356,7 @@ if __name__ == '__main__':
     
     from time import time
     
-    from asymmetree.tools.GraphTools import disturb_graph, symmetric_diff
+    from tralda.tools.GraphTools import disturb_graph, symmetric_diff
     
     random_tree = PhyloTree.random_colored_tree(30, 10,
                                                 force_all_colors=True)

@@ -2,8 +2,9 @@
 
 import networkx as nx
 
+from tralda.supertree.Build import aho_graph, mtt_partition
+
 from asymmetree.datastructures.PhyloTree import PhyloTree, PhyloTreeNode
-from asymmetree.tools.Build import aho_graph, mtt_partition
 
 from bmgedit.partitioning.Karger import Karger
 from bmgedit.partitioning.GreedyBipartition import (greedy_bipartition,

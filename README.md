@@ -16,6 +16,7 @@ This package contains various methods to edit an arbitrary vertex-colored digrap
 * [Scipy and Numpy](http://www.scipy.org/install.html)
 * [Matplotlib](https://matplotlib.org/)
 * [AsymmeTree](https://github.com/david-schaller/AsymmeTree)
+* [tralda](https://github.com/david-schaller/tralda)
 
 In order to use the ILP versions for BMG editing, an installation of Gurobi Optimizer (9.0 or higher) or IBM ILOG CPLEX Optimization Studio (12.10 or higher) is required.
 Moreover, the corresponding Python packages `gurobipy` or `docplex`, respectively, must be installed.
