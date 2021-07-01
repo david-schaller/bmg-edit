@@ -96,4 +96,5 @@ See the paper for an explanation of these methods.
 If you use AsymmeTree in your project or code from it, please consider citing:
 
 * **Schaller, D., Geiß, M., Hellmuth, M., Stadler, P. F. (2021) Heuristic Algorithms for Best Match Graph Editing.
+Algorithms for Molecular Biology (in press).
 arXiv:2103.07280 [math.CO].**
