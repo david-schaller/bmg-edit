@@ -93,7 +93,7 @@ See the paper for an explanation of these methods.
 
 ## Citation and References
 
-If you use AsymmeTree in your project or code from it, please consider citing:
+If you use `bmg-edit` in your project or code from it, please consider citing:
 
 * **Schaller, D., Geiß, M., Hellmuth, M., Stadler, P. F. (2021) Heuristic Algorithms for Best Match Graph Editing.
 Algorithms for Molecular Biology (in press).
