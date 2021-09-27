@@ -8,9 +8,10 @@ from tralda.datastructures import LCA
 from tralda.supertree.Build import best_pair_merge_first
 from tralda.tools.GraphTools import sort_by_colors
 
-from asymmetree.datastructures.PhyloTree import PhyloTree
-import asymmetree.best_matches.LeastResolvedTree as LRT
-from asymmetree.best_matches.TrueBMG import bmg_from_tree
+from asymmetree.analysis.BestMatches import (informative_triples,
+                                             binary_explainable_triples,
+                                             bmg_from_tree)
+from asymmetree.tools.PhyloTreeTools import (reconstruct_color_from_graph,)
 
 
 from bmgedit.Build import Build2
@@ -32,11 +33,10 @@ class BMGEditor:
         # informative triples
         if not binary:
             self.binarize = False
-            self.R = LRT.informative_triples(G, color_dict=self.color_dict)
+            self.R = informative_triples(G, color_dict=self.color_dict)
         else:
             self.binarize = binarization_mode
-            self.R = LRT.binary_explainable_triples(G,
-                                                    color_dict=self.color_dict)
+            self.R = binary_explainable_triples(G, color_dict=self.color_dict)
             
         # current tree built by one of the heuristics
         self._tree = None
@@ -67,9 +67,8 @@ class BMGEditor:
         method = method.lower()
         
         if method == 'bpmf':
-            self._tree = PhyloTree.to_phylotree( best_pair_merge_first(self.R,
-                                                     self.L,
-                                                     triple_weights=None) )
+            self._tree = best_pair_merge_first(self.R,self.L,
+                                               triple_weights=None) 
         elif method in ('mincut', 'karger', 'greedy', 'gradient_walk',
                         'louvain', 'louvain_obj'):
             build = Build2(self.R, self.L,
@@ -89,7 +88,7 @@ class BMGEditor:
                 supply_inner_vertex_count=False):
         
         if not extract_triples_first:
-            self._tree.reconstruct_info_from_graph(self.G)
+            reconstruct_color_from_graph(self._tree, self.G)
             tree = self._tree
         else:
             R_consistent = self.extract_consistent_triples()
@@ -97,7 +96,7 @@ class BMGEditor:
                            allow_inconsistency=False,
                            binarize=self.binarize)
             tree = build.build_tree()
-            tree.reconstruct_info_from_graph(self.G)
+            reconstruct_color_from_graph(tree, self.G)
         
         if supply_inner_vertex_count:
             return bmg_from_tree(tree), sum(1 for _ in tree.inner_nodes())
@@ -358,8 +357,10 @@ if __name__ == '__main__':
     
     from tralda.tools.GraphTools import disturb_graph, symmetric_diff
     
-    random_tree = PhyloTree.random_colored_tree(30, 10,
-                                                force_all_colors=True)
+    from asymmetree.tools.PhyloTreeTools import random_colored_tree
+    from asymmetree.analysis.BestMatches import is_bmg
+    
+    random_tree = random_colored_tree(30, 10, force_all_colors=True)
     bmg = bmg_from_tree(random_tree)
     disturbed = disturb_graph(bmg, 0.1, 0.1, preserve_properly_colored=True)
     
@@ -368,8 +369,8 @@ if __name__ == '__main__':
     print('orginal', bmg.edges(), bmg.size())
     print('disturbed', disturbed.edges(), disturbed.size())
     print('-------------')
-    print('original BMG is BMG:   ', bool(LRT.is_bmg(bmg)  ) )
-    print('disturbed graph is BMG:', bool(LRT.is_bmg(disturbed)) )
+    print('original BMG is BMG:   ', bool(is_bmg(bmg)  ) )
+    print('disturbed graph is BMG:', bool(is_bmg(disturbed)) )
     print('original vs disturbed:', symmetric_diff(bmg, disturbed))
     print('-------------')
     

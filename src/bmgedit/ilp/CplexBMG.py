@@ -219,13 +219,12 @@ class BMGEditor:
 
 if __name__ == '__main__':
     
-    from asymmetree import PhyloTree
-    from asymmetree import best_matches as bm
-    from asymmetree.best_matches.LeastResolvedTree import is_bmg
+    from asymmetree.tools.PhyloTreeTools import random_colored_tree
+    from asymmetree.analysis import (bmg_from_tree,
+                                     is_bmg,)
     
-    random_tree = PhyloTree.random_colored_tree(7, 4,
-                                                force_all_colors=True)
-    bmg = bm.bmg_from_tree(random_tree)
+    random_tree = random_colored_tree(7, 4, force_all_colors=True)
+    bmg = bmg_from_tree(random_tree)
     graph = gt.disturb_graph(bmg, 0.2, 0.2)
     
     solver = BMGEditor(graph)

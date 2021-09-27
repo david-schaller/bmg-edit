@@ -2,9 +2,8 @@
 
 import networkx as nx
 
+from tralda.datastructures.Tree import Tree, TreeNode
 from tralda.supertree.Build import aho_graph, mtt_partition
-
-from asymmetree.datastructures.PhyloTree import PhyloTree, PhyloTreeNode
 
 from bmgedit.partitioning.Karger import Karger
 from bmgedit.partitioning.GreedyBipartition import (greedy_bipartition,
@@ -72,8 +71,8 @@ class Build2:
         """Build a tree displaying all triples in R if possible.
         
         Keyword arguments:
-            return_root - if True, return 'PhyloTreeNode' instead of
-                'PhyloTree' instance
+            return_root - if True, return 'TreeNode' instead of
+                'Tree' instance
         """
         
         self.total_obj = 0
@@ -83,20 +82,20 @@ class Build2:
         else:
             root = self._aho(self.L, self.R)
             
-        return root if return_root else PhyloTree(root)
+        return root if return_root else Tree(root)
     
     
     def _trivial_case(self, L):
         
         if len(L) == 1:
             leaf = L.pop()
-            return PhyloTreeNode(leaf, label=str(leaf))
+            return TreeNode(label=leaf)
         
         elif len(L) == 2:
-            node = PhyloTreeNode(-1)
+            node = TreeNode()
             for _ in range(2):
                 leaf = L.pop()
-                node.add_child(PhyloTreeNode(leaf, label=str(leaf)))
+                node.add_child(TreeNode(label=leaf))
             return node
     
     
@@ -126,7 +125,7 @@ class Build2:
         if self.binarize == 'b' and len(part) > 2:
             part = balanced_coarse_graining(part)
         
-        root = PhyloTreeNode(-1)            # place new inner node
+        root = TreeNode()                   # place new inner node
         node = root
         for i, s in enumerate(part):
             Li, Ri = set(s), []
@@ -141,7 +140,7 @@ class Build2:
             
             # resolve to binary (caterpillar)
             if self.binarize == 'c' and i < len(part)-2:
-                new_node = PhyloTreeNode(-1)
+                new_node = TreeNode()
                 node.add_child(new_node)
                 node = new_node
    
@@ -172,7 +171,7 @@ class Build2:
         if self.binarize == 'b' and len(part) > 2:
             part = balanced_coarse_graining(part)
         
-        root = PhyloTreeNode(-1)            # place new inner node
+        root = TreeNode()                   # place new inner node
         node = root
         for i, s in enumerate(part):
             Li, Ri, Fi = set(s), [], []
@@ -188,7 +187,7 @@ class Build2:
             
             # resolve to binary (caterpillar)
             if self.binarize == 'c' and i < len(part)-2:
-                new_node = PhyloTreeNode(-1)
+                new_node = TreeNode()
                 node.add_child(new_node)
                 node = new_node
    
