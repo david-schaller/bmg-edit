@@ -10,7 +10,7 @@ import networkx as nx
 
 from asymmetree.treeevolve.GeneTree import observable_tree
 from asymmetree.analysis.BestMatches import orthology_from_tree, bmg_from_tree
-from asymmetree.tools.PhyloTreeTools import (color_sorted_leaves,
+from asymmetree.tools.PhyloTreeTools import (reconc_sorted_leaves,
                                              distance_matrix,)
 
 
@@ -27,7 +27,7 @@ class Scenario:
         
         self.OGT = OGT if OGT else observable_tree(TGT)
         
-        self.color_dict, self.genes = color_sorted_leaves(self.OGT, return_list=True)
+        self.reconc_dict, self.genes = reconc_sorted_leaves(self.OGT, return_list=True)
         self.gene_index = {gene: i for i, gene in enumerate(self.genes)}
         
         self._count_events()
@@ -46,7 +46,7 @@ class Scenario:
         for v in self.TGT.preorder():
             if v.event == 'D':
                 self.event_counts[1] += 1
-                if self.S.root.label == v.color[0]:
+                if self.S.root.label == v.reconc[0]:
                     self.event_counts[4] += 1
             elif v.event == 'L':
                 self.event_counts[2] += 1
@@ -70,7 +70,7 @@ class Scenario:
         self.outgroup_dict = {i: [] for i in range(len(self.subtree_list))}
         for gene in self.genes:
             for i in self.outgroup_dict.keys():
-                if self.subtree_index[gene.color] != i:
+                if self.subtree_index[gene.reconc] != i:
                     self.outgroup_dict[i].append(gene)
     
     
@@ -78,7 +78,7 @@ class Scenario:
         
         return (self.S, self.genes, self.gene_index,
                 self.subtree_list, self.subtree_index,
-                self.outgroup_dict, self.color_dict)
+                self.outgroup_dict, self.reconc_dict)
     
     
     def rates_and_counts(self):
@@ -89,7 +89,7 @@ class Scenario:
     
     def reduce_to_subtrees(self, full_bmg, full_rbmg):
         """Return a subgraph of the true RBMG with edges {u,v} for which the
-        corresponding species (colors) are in the same subtree of root(S)."""
+        corresponding species are in the same subtree of root(S)."""
         
         bmg_subtrees = nx.DiGraph()
         rbmg_subtrees = nx.Graph()
@@ -121,7 +121,7 @@ class Scenario:
         counts = [0 for i in range(len(self.subtree_list))]
         
         for g in self.genes:
-            counts[self.subtree_index[g.color]] += 1
+            counts[self.subtree_index[g.reconc]] += 1
         
         possible_edges = 0
         for count in counts:

@@ -70,12 +70,12 @@ def neighbor_joining(leaves, leaf_index, matrix_filename,
     
     tree = parse_newick(newick)
     
-    # restore (leaf) indeces and colors
+    # restore (leaf) indeces and reconciliation
     leaf_dict = {leaf.label: leaf for leaf in leaves}
     index_counter = 0
     for v in tree.preorder():
         if not v.children:
-            v.color = leaf_dict[v.label].color
+            v.reconc = leaf_dict[v.label].reconc
         else:
             while index_counter in leaf_dict:
                 index_counter += 1

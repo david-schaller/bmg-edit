@@ -29,10 +29,10 @@ def species_to_genes(filename, scenario):
     """Write the species and corresponding genes file."""
     
     with open(filename, 'w') as f:
-        species = list(scenario.color_dict)
+        species = list(scenario.reconc_dict)
         for i in range(len(species)):
             f.write(str(species[i]))
-            for gene in scenario.color_dict[species[i]]:
+            for gene in scenario.reconc_dict[species[i]]:
                 f.write('\t' + str(gene.label))
             if i < len(species)-1:
                 f.write('\n')

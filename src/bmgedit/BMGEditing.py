@@ -11,7 +11,7 @@ from tralda.tools.GraphTools import sort_by_colors
 from asymmetree.analysis.BestMatches import (informative_triples,
                                              binary_explainable_triples,
                                              bmg_from_tree)
-from asymmetree.tools.PhyloTreeTools import (reconstruct_color_from_graph,)
+from asymmetree.tools.PhyloTreeTools import (reconstruct_reconc_from_graph,)
 
 
 from bmgedit.Build import Build2
@@ -88,7 +88,7 @@ class BMGEditor:
                 supply_inner_vertex_count=False):
         
         if not extract_triples_first:
-            reconstruct_color_from_graph(self._tree, self.G)
+            reconstruct_reconc_from_graph(self._tree, self.G)
             tree = self._tree
         else:
             R_consistent = self.extract_consistent_triples()
@@ -96,7 +96,7 @@ class BMGEditor:
                            allow_inconsistency=False,
                            binarize=self.binarize)
             tree = build.build_tree()
-            reconstruct_color_from_graph(tree, self.G)
+            reconstruct_reconc_from_graph(tree, self.G)
         
         if supply_inner_vertex_count:
             return bmg_from_tree(tree), sum(1 for _ in tree.inner_nodes())

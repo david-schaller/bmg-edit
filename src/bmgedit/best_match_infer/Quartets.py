@@ -26,7 +26,7 @@ __author__ = 'David Schaller'
 # --------------------------------------------------------------------------
 # Outgroup selection methods:
 #  (1) outgroups from subtrees under the root of S
-#  (2) use all possible outgoups for a pair of colors
+#  (2) use all possible outgoups for a pair of species
 #      (corrected closest outgroups)
 # --------------------------------------------------------------------------
 
@@ -60,7 +60,7 @@ class Quartets:
         
         (self.S, self.genes, self.gene_index,
          self.subtree_list, self.subtree_index,
-         self.outgroup_dict, self.color_dict) = scenario.get_data()
+         self.outgroup_dict, self.reconc_dict) = scenario.get_data()
         
         self.D = distance_matrix
         self.voting_mode = voting_mode                          # majority voting or weighted sum
@@ -93,7 +93,7 @@ class Quartets:
                     species_c2 = self.subtree_species[c2.label]
                     if len(genes_c1) > 1 and len(species_c2) > 1:
                         for s1, s2 in itertools.combinations(species_c2, 2):
-                            genes_c2 = self.color_dict[s1] + self.color_dict[s2]
+                            genes_c2 = self.reconc_dict[s1] + self.reconc_dict[s2]
                             
                             votes = [0,0]                                           # [congruent, incongruent]
                             for i in range(20):
@@ -147,7 +147,7 @@ class Quartets:
     
     def get_outgroups_root_only(self, x, limit=10):
         
-        i, x_subtree = self.gene_index[x], self.subtree_index[x.color]
+        i, x_subtree = self.gene_index[x], self.subtree_index[x.reconc]
         limit = min(limit, len(self.outgroup_dict[x_subtree]))
         
         if self.use_distant_genes:
@@ -155,7 +155,7 @@ class Quartets:
             j = len(self.genes)-1
             while len(outgroups) < limit and j >= 0:
                 gene = self.genes[self.I[i,j]]
-                if x_subtree != self.subtree_index[gene.color]:
+                if x_subtree != self.subtree_index[gene.reconc]:
                     outgroups.append(gene)
                 j -= 1
         else:
@@ -164,14 +164,14 @@ class Quartets:
         return outgroups
     
     
-    def get_outgroups_closest(self, x, colorY, limit=10):
+    def get_outgroups_closest(self, x, reconcY, limit=10):
         
-        outgroups_S = self.lca_to_outgroups[self.lca_S(x.color, colorY).label]
+        outgroups_S = self.lca_to_outgroups[self.lca_S(x.reconc, reconcY).label]
         
         outgroups = []
         i, j, N = self.gene_index[x], 0, self.D.shape[0]
         while len(outgroups) < limit and j < N:
-            if self.genes[self.I[i,j]].color in outgroups_S:
+            if self.genes[self.I[i,j]].reconc in outgroups_S:
                 outgroups.append(self.genes[self.I[i,j]])
             j += 1
         
@@ -259,17 +259,17 @@ class Quartets:
         
         self.bmg = nx.DiGraph()
         for g in self.genes:
-            self.bmg.add_node(g.label, color=g.color)
+            self.bmg.add_node(g.label, color=g.reconc)
         
-        # consider all genes of other color as potential best matches
+        # consider all genes of other species as potential best matches
         if self.y_candidates is None:
             
             for x in self.genes:
                 Z = self.get_outgroups_root_only(x)
                 
-                for species in self.subtree_list[self.subtree_index[x.color]]:
-                    Y = self.color_dict[species]
-                    if species == x.color:
+                for species in self.subtree_list[self.subtree_index[x.reconc]]:
+                    Y = self.reconc_dict[species]
+                    if species == x.reconc:
                         continue
                     elif len(Y) == 1:
                         self.bmg.add_edge(x.label, Y[0].label)
@@ -284,14 +284,14 @@ class Quartets:
             for x in self.genes:
                 Z = self.get_outgroups_root_only(x)
                 Y = sorted([id_dict[gene_id] for gene_id in self.y_candidates.neighbors(x.label)],
-                           key=lambda y: y.color)               # sort by color
+                           key=lambda y: y.reconc)               # sort by reconc
                 
                 i = 0
-                while i < len(Y):                               # handle colors separately
+                while i < len(Y):                               # handle reconcs separately
                     j = i
-                    while j < len(Y) and Y[i].color == Y[j].color:
+                    while j < len(Y) and Y[i].reconc == Y[j].reconc:
                         j += 1
-                    if self.subtree_index[x.color] == self.subtree_index[Y[i].color]:
+                    if self.subtree_index[x.reconc] == self.subtree_index[Y[i].reconc]:
                         if i == j-1:
                             self.bmg.add_edge(x.label, Y[i].label)
                         else:
@@ -314,27 +314,27 @@ class Quartets:
             self.subtree_species[v.label] = [leaf.label for leaf in self.S_leaves[v]]
             self.subtree_genes[v.label] = []
             for leaf_id in self.subtree_species[v.label]:
-                self.subtree_genes[v.label].extend(self.color_dict[leaf_id])
+                self.subtree_genes[v.label].extend(self.reconc_dict[leaf_id])
         
         self.compute_outgroup_species()
         self.build_matrix_I()
         
         self.bmg = nx.DiGraph()
         for g in self.genes:
-            self.bmg.add_node(g.label, color=g.color)
+            self.bmg.add_node(g.label, color=g.reconc)
         
-        # consider all genes of other color as potential best matches
+        # consider all genes of other species as potential best matches
         if self.y_candidates is None:
             
             for x in self.genes:
-                for species in self.subtree_list[self.subtree_index[x.color]]:
-                    Y = self.color_dict[species]
-                    if species == x.color:
+                for species in self.subtree_list[self.subtree_index[x.reconc]]:
+                    Y = self.reconc_dict[species]
+                    if species == x.reconc:
                         continue
                     elif len(Y) == 1:
                         self.bmg.add_edge(x.label, Y[0].label)
                     elif len(Y) > 1:
-                        Z = self.get_outgroups_closest(x, Y[0].color)
+                        Z = self.get_outgroups_closest(x, Y[0].reconc)
                         best_matches = self.find_best_matches(x, Y, Z)
                         for y in best_matches:
                             self.bmg.add_edge(x.label, y.label)
@@ -344,18 +344,18 @@ class Quartets:
             id_dict = {g.label: g for g in self.genes}
             for x in self.genes:
                 Y = sorted([id_dict[gene_id] for gene_id in self.y_candidates.neighbors(x.label)],
-                           key=lambda y: y.color)               # sort by color
+                           key=lambda y: y.reconc)               # sort by reconc
                 
                 i = 0
-                while i < len(Y):                               # handle colors separately
+                while i < len(Y):                               # handle species separately
                     j = i
-                    while j < len(Y) and Y[i].color == Y[j].color:
+                    while j < len(Y) and Y[i].reconc == Y[j].reconc:
                         j += 1
-                    if self.subtree_index[x.color] == self.subtree_index[Y[i].color]:
+                    if self.subtree_index[x.reconc] == self.subtree_index[Y[i].reconc]:
                         if i == j-1:
                             self.bmg.add_edge(x.label, Y[i].label)
                         else:
-                            Z = self.get_outgroups_closest(x, Y[i].color)
+                            Z = self.get_outgroups_closest(x, Y[i].reconc)
                             best_matches = self.find_best_matches(x, Y[i:j], Z)
                             for y in best_matches:
                                 self.bmg.add_edge(x.label, y.label)
