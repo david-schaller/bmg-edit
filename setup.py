@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='bmgedit',
-    version='0.0.2',
+    version='0.0.3',
     author='David Schaller',
     author_email='sdavid@bioinf.uni-leipzig.de',
     description='Best match graph editing.',
