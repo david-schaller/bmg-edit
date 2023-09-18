@@ -23,7 +23,7 @@ __author__ = 'David Schaller'
 class BMGEditor:
     """Wrapper for triple-based BMG editing heuristics."""
     
-    def __init__(self, G, binary=False, binarization_mode='balanced'):
+    def __init__(self, G, binary=False, binarization_mode='balanced', use_binary_triples=True):
         
         self.G = G
         self.color_dict = sort_by_colors(G)
@@ -33,15 +33,18 @@ class BMGEditor:
         # informative triples
         if not binary:
             self.binarize = False
-            self.R = informative_triples(G, color_dict=self.color_dict)
+            if use_binary_triples:
+                self.R = binary_explainable_triples(G, color_dict=self.color_dict)
+            else:
+                self.R = informative_triples(G, color_dict=self.color_dict)
         else:
             self.binarize = binarization_mode
             self.R = binary_explainable_triples(G, color_dict=self.color_dict)
             
         # current tree built by one of the heuristics
         self._tree = None
-        
-    
+
+
     def extract_consistent_triples(self):
         
         if not self._tree:
@@ -63,7 +66,7 @@ class BMGEditor:
         else:
             raise ValueError('unknown mode for objective ' \
                              'function: {}'.format(objective))
-        
+
         method = method.lower()
         
         if method == 'bpmf':
@@ -78,7 +81,8 @@ class BMGEditor:
                            obj_function=f_obj,
                            minimize=minimize,
                            obj_function_args=(self.G,),
-                           weighted_mincut=True)
+                           weighted_mincut=True,
+                          )
             self._tree = build.build_tree()
         else:
             raise ValueError('unknown partition method: {}'.format(method))
@@ -94,7 +98,8 @@ class BMGEditor:
             R_consistent = self.extract_consistent_triples()
             build = Build2(R_consistent, self.L,
                            allow_inconsistency=False,
-                           binarize=self.binarize)
+                           binarize=self.binarize,
+                          )
             tree = build.build_tree()
             reconstruct_reconc_from_graph(tree, self.G)
         
