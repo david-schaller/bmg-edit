@@ -89,7 +89,9 @@ class BMGEditor:
     
     
     def get_bmg(self, extract_triples_first=False,
-                supply_inner_vertex_count=False):
+                supply_inner_vertex_count=False,
+                update_tree= False,
+               ):
         
         if not extract_triples_first:
             reconstruct_reconc_from_graph(self._tree, self.G)
@@ -102,7 +104,10 @@ class BMGEditor:
                           )
             tree = build.build_tree()
             reconstruct_reconc_from_graph(tree, self.G)
-        
+
+            if update_tree:
+                self._tree= tree
+
         if supply_inner_vertex_count:
             return bmg_from_tree(tree), sum(1 for _ in tree.inner_nodes())
         else:
