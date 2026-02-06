@@ -125,13 +125,25 @@ class Build2:
         if self.binarize == 'b' and len(part) > 2:
             part = balanced_coarse_graining(part)
         
+        # normalize partition sets and pre-split triples in one pass
+        part = [set(s) for s in part]
+        comp_index = {}
+        for idx, s in enumerate(part):
+            for leaf in s:
+                comp_index[leaf] = idx
+        Ri_list = [[] for _ in part]
+        for t in R:
+            a, b, c = t
+            idx = comp_index.get(a)
+            if idx is None:
+                continue
+            if comp_index.get(b) == idx and comp_index.get(c) == idx:
+                Ri_list[idx].append(t)
+        
         root = TreeNode()                   # place new inner node
         node = root
         for i, s in enumerate(part):
-            Li, Ri = set(s), []
-            for t in R:                     # construct triple subset
-                if Li.issuperset(t):
-                    Ri.append(t)
+            Li, Ri = s, Ri_list[i]
             Ti = self._aho(Li, Ri)          # recursive call
             if not Ti:
                 return False                # raise False to previous call
@@ -171,14 +183,27 @@ class Build2:
         if self.binarize == 'b' and len(part) > 2:
             part = balanced_coarse_graining(part)
         
+        # normalize partition sets and pre-split triples in one pass
+        part = [set(s) for s in part]
+        comp_index = {}
+        for idx, s in enumerate(part):
+            for leaf in s:
+                comp_index[leaf] = idx
+        Ri_list = [[] for _ in part]
+        Fi_list = [[] for _ in part]
+        for X, X_list in ((R, Ri_list), (F, Fi_list)):
+            for t in X:
+                a, b, c = t
+                idx = comp_index.get(a)
+                if idx is None:
+                    continue
+                if comp_index.get(b) == idx and comp_index.get(c) == idx:
+                    X_list[idx].append(t)
+        
         root = TreeNode()                   # place new inner node
         node = root
         for i, s in enumerate(part):
-            Li, Ri, Fi = set(s), [], []
-            for Xi, X in ((Ri, R), (Fi, F)):
-                for t in X:
-                    if Li.issuperset(t):
-                        Xi.append(t)
+            Li, Ri, Fi = s, Ri_list[i], Fi_list[i]
             Ti = self._mtt(Li, Ri, Fi)      # recursive call
             if not Ti:
                 return False                # raise False to previous call
