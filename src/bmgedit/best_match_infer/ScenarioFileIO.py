@@ -8,7 +8,7 @@ import itertools
 
 import networkx as nx
 
-from asymmetree.tools.PhyloTreeTools import to_newick
+from asymmetree.utils.phylogenetic_trees import to_newick
 
 
 __author__ = 'David Schaller'

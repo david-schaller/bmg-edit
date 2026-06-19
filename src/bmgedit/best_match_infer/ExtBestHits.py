@@ -8,7 +8,7 @@ Implementation of the Extended Best Hits method for best match inference.
 
 import os, subprocess, time
 
-from asymmetree.analysis.BestMatches import extended_best_hits
+from asymmetree.analysis.best_matches import extended_best_hits
 from asymmetree.file_io.ScenarioFileIO import (parse_bmg_edges,
                                                matrix_to_phylip,
                                                species_to_genes)

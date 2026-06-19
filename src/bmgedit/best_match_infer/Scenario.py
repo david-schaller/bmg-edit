@@ -8,9 +8,9 @@ Wrapper class for species and gene tree. Compute statistics, BMG/RBMG.
 
 import networkx as nx
 
-from asymmetree.treeevolve.GeneTree import observable_tree
-from asymmetree.analysis.BestMatches import orthology_from_tree, bmg_from_tree
-from asymmetree.tools.PhyloTreeTools import (reconc_sorted_leaves,
+from asymmetree.treeevolve.genes import observable_tree
+from asymmetree.analysis.best_matches import orthology_from_tree, bmg_from_tree
+from asymmetree.utils.phylogenetic_trees import (reconc_sorted_leaves,
                                              distance_matrix,)
 
 
