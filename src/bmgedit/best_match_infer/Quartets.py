@@ -9,7 +9,7 @@ import itertools, random,  subprocess, time, os
 import numpy as np
 import networkx as nx
 
-from tralda.datastructures.Tree import LCA
+from tralda.datastructures import LCA
 
 from bmg_edit.best_match_infer.ScenarioFileIO import (parse_bmg_edges,
                                                       matrix_to_phylip,

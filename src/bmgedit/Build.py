@@ -2,8 +2,8 @@
 
 import networkx as nx
 
-from tralda.datastructures.Tree import Tree, TreeNode
-from tralda.supertree.Build import aho_graph, mtt_partition
+from tralda.datastructures.tree import Tree, TreeNode
+from tralda.supertree.build import aho_graph, mtt_partition
 
 from bmgedit.partitioning.Karger import Karger
 from bmgedit.partitioning.GreedyBipartition import (greedy_bipartition,

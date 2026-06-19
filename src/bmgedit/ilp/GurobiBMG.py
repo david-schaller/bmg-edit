@@ -6,7 +6,7 @@ import gurobipy as gp
 from gurobipy import GRB
 
 import networkx as nx
-import tralda.tools.GraphTools as gt
+import tralda.utils.graph_tools as gt
 
 
 __author__ = 'David Schaller'

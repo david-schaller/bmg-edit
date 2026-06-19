@@ -5,7 +5,7 @@ import itertools
 from docplex.mp.model import Model
 
 import networkx as nx
-import tralda.tools.GraphTools as gt
+import tralda.utils.graph_tools as gt
 
 
 __author__ = 'David Schaller'
