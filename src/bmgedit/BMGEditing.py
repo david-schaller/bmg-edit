@@ -5,8 +5,8 @@
 import itertools
 
 from tralda.datastructures import LCA
-from tralda.supertree.Build import best_pair_merge_first
-from tralda.tools.GraphTools import sort_by_colors
+from tralda.supertree.build import best_pair_merge_first
+from tralda.utils.graph_tools import sort_by_colors
 
 from asymmetree.analysis.BestMatches import (informative_triples,
                                              binary_explainable_triples,
@@ -365,7 +365,7 @@ if __name__ == '__main__':
     
     from time import time
     
-    from tralda.tools.GraphTools import disturb_graph, symmetric_diff
+    from tralda.utils.graph_tools import disturb_graph, symmetric_diff
     
     from asymmetree.tools.PhyloTreeTools import random_colored_tree
     from asymmetree.analysis.BestMatches import is_bmg

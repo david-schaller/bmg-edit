@@ -2,7 +2,7 @@
 
 import os, subprocess, itertools, time
 
-from tralda.datastructures.Tree import TreeNode
+from tralda.datastructures.tree import TreeNode
 
 from asymmetree.analysis.BestMatches import bmg_from_tree
 
