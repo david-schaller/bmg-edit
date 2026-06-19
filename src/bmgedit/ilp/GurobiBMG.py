@@ -406,7 +406,7 @@ class BinaryBMGEditor(EditorSuperClass):
 
 if __name__ == '__main__':
     
-    from asymmetree.tools.PhyloTreeTools import random_colored_tree
+    from asymmetree.utils.phylogenetic_trees import random_colored_tree
     from asymmetree.analysis import (bmg_from_tree,
                                      is_bmg,
                                      binary_refinable_tree)

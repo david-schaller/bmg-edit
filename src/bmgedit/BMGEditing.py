@@ -8,10 +8,10 @@ from tralda.datastructures import LCA
 from tralda.supertree.build import best_pair_merge_first
 from tralda.utils.graph_tools import sort_by_colors
 
-from asymmetree.analysis.BestMatches import (informative_triples,
+from asymmetree.analysis.best_matches import (informative_triples,
                                              binary_explainable_triples,
                                              bmg_from_tree)
-from asymmetree.tools.PhyloTreeTools import (reconstruct_reconc_from_graph,)
+from asymmetree.utils.phylogenetic_trees import (reconstruct_reconc_from_graph,)
 
 
 from bmgedit.Build import Build2
@@ -357,8 +357,8 @@ if __name__ == '__main__':
     
     from tralda.utils.graph_tools import disturb_graph, symmetric_diff
     
-    from asymmetree.tools.PhyloTreeTools import random_colored_tree
-    from asymmetree.analysis.BestMatches import is_bmg
+    from asymmetree.utils.phylogenetic_trees import random_colored_tree
+    from asymmetree.analysis.best_matches import is_bmg
     
     random_tree = random_colored_tree(30, 10, force_all_colors=True)
     bmg = bmg_from_tree(random_tree)

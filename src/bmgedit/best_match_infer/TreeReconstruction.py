@@ -4,9 +4,9 @@ import os, subprocess, itertools, time
 
 from tralda.datastructures.tree import TreeNode
 
-from asymmetree.analysis.BestMatches import bmg_from_tree
+from asymmetree.analysis.best_matches import bmg_from_tree
 
-from asymmetree.tools.PhyloTreeTools import (delete_and_reconnect,
+from asymmetree.utils.phylogenetic_trees import (delete_and_reconnect,
                                              distances_from_root,
                                              parse_newick,)
 
