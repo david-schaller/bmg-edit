@@ -23,7 +23,7 @@ __author__ = 'David Schaller'
 class BMGEditor:
     """Wrapper for triple-based BMG editing heuristics."""
     
-    def __init__(self, G, binary=False, binarization_mode='balanced'):
+    def __init__(self, G, binary=False, binarization_mode='balanced', use_binary_triples=True):
         
         self.G = G
         self.color_dict = sort_by_colors(G)
@@ -33,7 +33,10 @@ class BMGEditor:
         # informative triples
         if not binary:
             self.binarize = False
-            self.R = informative_triples(G, color_dict=self.color_dict)
+            if use_binary_triples:
+                self.R = binary_explainable_triples(G, color_dict=self.color_dict)
+            else:
+                self.R = informative_triples(G, color_dict=self.color_dict)
         else:
             self.binarize = binarization_mode
             self.R = binary_explainable_triples(G, color_dict=self.color_dict)
@@ -85,7 +88,9 @@ class BMGEditor:
     
     
     def get_bmg(self, extract_triples_first=False,
-                supply_inner_vertex_count=False):
+                supply_inner_vertex_count=False,
+                update_tree= False,
+               ):
         
         if not extract_triples_first:
             reconstruct_reconc_from_graph(self._tree, self.G)
@@ -94,10 +99,14 @@ class BMGEditor:
             R_consistent = self.extract_consistent_triples()
             build = Build2(R_consistent, self.L,
                            allow_inconsistency=False,
-                           binarize=self.binarize)
+                           binarize=self.binarize,
+                          )
             tree = build.build_tree()
             reconstruct_reconc_from_graph(tree, self.G)
-        
+
+            if update_tree:
+                self._tree= tree
+
         if supply_inner_vertex_count:
             return bmg_from_tree(tree), sum(1 for _ in tree.inner_nodes())
         else:
