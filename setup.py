@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='bmgedit',
-    version='0.0.3',
+    version='0.0.4',
     author='David Schaller',
     author_email='sdavid@bioinf.uni-leipzig.de',
     description='Best match graph editing.',
@@ -26,6 +26,6 @@ setuptools.setup(
         'matplotlib>=3.0',
         'networkx>=2.2',
         'asymmetree>=2.2.0',
-        'tralda>=1.0.1',
+        'tralda>=2.0.3',
    ],
 )
